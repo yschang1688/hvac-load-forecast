@@ -1,0 +1,42 @@
+# hvac-load-forecast
+
+建築冷卻負荷（chilled water）的多步時序預測，與它的驗收流程。
+
+資料源：[Building Data Genome Project 2](https://github.com/buds-lab/building-data-genome-project-2)（CC BY-SA 4.0），
+1,600+ 棟建築的逐時計量資料，本專案使用其中的冰水表、氣象與建物中繼資料。
+
+## 這個專案在做什麼
+
+不是做一個預測模型，是做**一套能跑在很多棟建築上的預測管線，以及判斷它的準確率能不能信的流程**。
+
+- 一套 pipeline、一份設定檔（`config/pipeline.json`），N 棟建築各自產出模型與驗收報告
+- 新增一棟建築不改程式碼
+
+## 進度
+
+- [x] **P1 資料契約與品質閘** — 6 條規則、三級判定、465 棟實跑（[報告](reports/P1_REPORT.md)）
+- [ ] P2 防洩漏特徵管線
+- [ ] P3 多步預測策略與架構對照（LightGBM／LSTM／Transformer）
+- [ ] P4 漂移監控與 retrain 自動化
+- [ ] P5 服務層與 API contract
+
+## 快速開始
+
+```bash
+uv venv .venv && uv pip install --python .venv/bin/python -r requirements.txt
+src/fetch_data.sh                      # 取資料（走 Git LFS API，附 SHA256 對帳）
+.venv/bin/python src/run_quality.py    # P1：品質閘跑全部案場
+.venv/bin/python -m pytest tests/ -q
+```
+
+> 取資料為什麼不是 `curl raw.githubusercontent.com`：該 repo 用 Git LFS，直接抓只會得到
+> 133 bytes 的指標檔——副檔名是 `.csv`、HTTP 回 200、檔案存在，但內容不是資料。
+> `fetch_data.sh` 走 LFS batch API 取真檔並以 SHA256（即 LFS oid）逐檔對帳。
+
+## 設計原則
+
+1. **原始值不刪不改**：閘門只產生判定與標記，修補另存欄位並記錄補值方法。
+2. **三級判定而非二分法**：Pass／Conditional／Reject。
+3. **規則要能說出物理理由**：每條規則附 `rationale`，被質疑時答得出來。
+4. **因果性分層**：`streaming_safe` 的規則只看當下與過去，生產可逐筆跑；其餘僅限批次剖析。
+5. **閘門必須自證**：真實資料全過不是有效的證據，逐型植入缺陷才是。

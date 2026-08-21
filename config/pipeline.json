@@ -1,0 +1,21 @@
+{
+  "_comment": "公版化設定：新增案場只改本檔，不改程式碼。閾值全部外部化並附物理理由（見 src/quality.py 各規則 rationale）。",
+  "data": {
+    "meter_file": "chilledwater.csv",
+    "weather_file": "weather.csv",
+    "metadata_file": "metadata.csv",
+    "site_id_from": "building_id_prefix"
+  },
+  "selection": {
+    "min_coverage": 0.9,
+    "min_nonzero_frac": 0.2
+  },
+  "quality": {
+    "ceiling_iqr_k": 20,
+    "spike_window": 168,
+    "spike_k": 3,
+    "flat_hours": 24,
+    "gap_long_hours": 6,
+    "reject_error_frac": 0.05
+  }
+}
