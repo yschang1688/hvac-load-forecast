@@ -56,5 +56,15 @@
     "seed": 42,
     "sealed_test_start": "2017-07-01",
     "min_nonzero_frac": 0.6
+  },
+  "p4": {
+    "ref_end": "2016-12-31",
+    "deploy_start": "2017-01-01",
+    "deploy_end": "2017-12-24",
+    "psi_warn": 0.1,
+    "psi_alert": 0.25,
+    "min_retrain_gap_days": 28,
+    "inject_start": "2017-07-01",
+    "n_buildings": 6
   }
 }
