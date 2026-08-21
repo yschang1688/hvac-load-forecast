@@ -2,3 +2,12 @@
 weather_mode=lagged_only
 建模樣本 12 棟 · horizon 24 · weather_mode=lagged_only
 [1/12] Bobcat_education_Angela  339s  累計 24 列
+[2/12] Bobcat_other_Howard  461s  累計 48 列
+[3/12] Bull_assembly_Brandon  433s  累計 72 列
+[4/12] Bull_education_Linnie  518s  累計 96 列
+[5/12] Cockatoo_lodging_Aimee  217s  累計 120 列
+[6/12] Eagle_education_Raul  408s  累計 144 列
+[7/12] Eagle_health_Vincenza  463s  累計 168 列
+[8/12] Fox_education_Theodore  300s  累計 192 列
+[9/12] Fox_office_Essie  6094s  累計 216 列
+[10/12] Hog_education_Wayne  6368s  累計 240 列

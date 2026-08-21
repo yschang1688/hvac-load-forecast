@@ -1,0 +1,20 @@
+/Users/john/hvac-load-forecast/.venv/lib/python3.14/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+  from starlette.testclient import TestClient as TestClient  # noqa
+== ingestion ==
+  DAIKIN_SITE    vendor_a  -> 200 {'accepted': 48, 'rejected': 0, 'errors': []}
+  CARRIER_SITE   vendor_b  -> 200 {'accepted': 48, 'rejected': 0, 'errors': []}
+  含違規批次 -> 200 accepted=2 rejected=1
+     擋下 idx=0 payload: Value error, chw_load_kw 不可為負（冰水側熱負荷無負值的物理意義） [type=value_er
+
+== 兩套方言歸一驗證 ==
+  DAIKIN_SITE    第一筆 canonical 負荷 = 100.00 kW
+  CARRIER_SITE   第一筆 canonical 負荷 = 99.88 kW
+
+== 模型版本與排程 ==
+  DAIKIN_SITE    model#1 每日預測寫入 24 列
+  CARRIER_SITE   model#2 每日預測寫入 24 列
+  重放同一批 -> 總列數 48（冪等，應為 48 = 2 案場 × 24 步）
+  週檢查(冷卻期內): psi=0.42 state=alert retrain=False — 在冷卻期內（還有 13 天）
+  週檢查(冷卻期外): psi=0.42 state=alert retrain=True — PSI=0.420 超過 0.25
+
+儀表板落盤 reports/p5_dashboard.html（2515 bytes）
