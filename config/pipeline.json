@@ -52,8 +52,9 @@
     "train_start": "2016-01-01",
     "first_train_end": "2016-12-31",
     "valid_days": 30,
-    "max_folds": 6,
+    "max_folds": 4,
     "seed": 42,
-    "sealed_test_start": "2017-07-01"
+    "sealed_test_start": "2017-07-01",
+    "min_nonzero_frac": 0.6
   }
 }

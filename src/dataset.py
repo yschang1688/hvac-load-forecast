@@ -40,7 +40,11 @@ def select_buildings(cfg: dict) -> list[str]:
     """
     v = pd.read_csv(ROOT / "reports" / "p1_quality_verdicts.csv")
     m = cfg["modeling"]
-    ok = v[(v.verdict != "Reject") & (v.coverage >= m["min_coverage"])].copy()
+    # ⚠ 評估期必須真的有負荷。有些建築整個冬季到春季冰機全關（實測 Bobcat_assembly_Billy
+    # 在 fold0 的平均負荷為 0），這種建築在評估視窗上沒有任何可預測的訊號，
+    # 留著只會產生一堆分母為 0 的無效列。此條件與模型結果無關，可事前宣告。
+    ok = v[(v.verdict != "Reject") & (v.coverage >= m["min_coverage"])
+           & (v.nonzero_frac >= m.get("min_nonzero_frac", 0.5))].copy()
     ok["err_rate"] = ok.error_frac
     ok = ok.sort_values(["site_id", "err_rate", "coverage"], ascending=[True, True, False])
     picked = ok.groupby("site_id").head(m["per_site"]).head(m["n_buildings"])
