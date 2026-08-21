@@ -24,23 +24,37 @@
 |---|---|
 | P1 資料契約與品質閘 | ✅ 完成（`reports/P1_REPORT.md`，465 棟實跑） |
 | P2 防洩漏特徵與切分 | ✅ 完成（`reports/P2_REPORT.md`） |
-| P3 策略 × 架構對照 | 🟡 **程式完成、全量跑進行中**（見下） |
-| P4 漂移監控與 retrain 自動化 | ⬜ 未開始 |
+| P3 策略 × 架構對照 | ✅ 第一輪完成（`reports/P3_REPORT.md`）；🟡 第二輪 `lagged_only` 與 P4 背景跑中 |
+| P4 漂移監控與 retrain 自動化 | 🟡 程式完成（`src/drift.py`／`src/run_p4.py`），背景跑中 |
 | P5 FastAPI＋SQLAlchemy 服務層 | ⬜ 未開始 |
 
 測試 29 則全綠：`.venv/bin/python -m pytest tests/ -q`
 
-### P3 的當下狀態
+### 背景工作的當下狀態
 
-背景執行中：`nohup .venv/bin/python src/run_p3.py > reports/p3_run_perfect.log 2>&1 &`
-- 單棟約 **478 秒**，共 12 棟，全量約 **96 分鐘**
-- **逐棟落盤**到 `reports/p3_results_perfect_forecast.csv`，中斷不會全損
-- 進度看 `tail reports/p3_run_perfect.log`；每棟應產出 **24 列**（6 模型 × 4 folds）
-- 跑完後執行 `.venv/bin/python src/analyze_p3.py perfect_forecast`（分析腳本已寫好，宣稱規則寫死在裡面）
+`nohup ./run_rest.sh > reports/run_rest.log 2>&1 &` 依序跑三件事：
+1. P3 第二輪 `weather_mode=lagged_only`（單棟約 340 秒 × 12，約 68 分鐘）
+2. 把設定還原成 `perfect_forecast`
+3. P4 漂移監控（6 棟 × 注入/未注入兩組）
 
-**跑完 perfect_forecast 之後還要跑第二輪**：把 `config/pipeline.json` 的
-`modeling.weather_mode` 改成 `"lagged_only"` 再跑一次，兩輪的差距＝「氣象預報值多少」。
-**只報其中一輪是片面的**，這是 P2 報告裡明文寫下的承諾。
+**進度**：`tail reports/run_rest.log`。逐棟落盤，中斷不會全損。
+**中斷後如何續跑**：直接重跑 `./run_rest.sh` 即可（會覆蓋重算，沒有增量機制）。
+
+跑完後要做的：
+- `.venv/bin/python src/analyze_p3.py lagged_only` → 與 perfect_forecast 對照，
+  兩者差距＝**氣象預報對這個模型值多少**。這是 P2 報告寫下的承諾，只報一輪是片面的。
+- P4 結果在 `reports/p4_drift.csv`，需要寫 `reports/P4_REPORT.md`（分析腳本尚未寫）
+
+### P3 第一輪的關鍵結論（寫報告時別弄丟）
+
+**主結論取決於 45 個視窗中的 2 個**：排除兩個「冰機實質關機」的視窗
+（零值 85–93%、平均負荷 0.2–0.4、skill 7.07 與 4.47），
+lgbm_direct 對基準線就從 p=0.590「不可宣稱」翻成 p<0.0001「可宣稱」。
+因為視窗層級的關機門檻**沒有事前宣告**，報告立場採**不可宣稱**，
+排除後的版本只列為敏感度分析。**這個立場不要為了讓數字好看而改掉。**
+
+其餘：遞迴式誤差累積可宣稱且比免費基準線更差；三個架構彼此分不出高下；
+兩個 NN 呈欠擬合樣態（逐步長誤差幾乎是平的），已標註為算力取捨而非架構結論。
 
 ## 接手時務必知道的五個坑（都踩過了，別再踩一次）
 

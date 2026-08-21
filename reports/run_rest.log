@@ -1,0 +1,4 @@
+=== [1/3] P3 第二輪 lagged_only ===
+weather_mode=lagged_only
+建模樣本 12 棟 · horizon 24 · weather_mode=lagged_only
+[1/12] Bobcat_education_Angela  339s  累計 24 列
