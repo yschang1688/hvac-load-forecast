@@ -17,5 +17,43 @@
     "flat_hours": 24,
     "gap_long_hours": 6,
     "reject_error_frac": 0.05
+  },
+  "features": {
+    "load_lags": [
+      1,
+      2,
+      3,
+      24,
+      48,
+      168
+    ],
+    "load_roll_windows": [
+      24,
+      168
+    ],
+    "weather_cols": [
+      "airTemperature",
+      "dewTemperature",
+      "cloudCoverage",
+      "windSpeed"
+    ],
+    "future_weather_cols": [
+      "airTemperature",
+      "dewTemperature"
+    ],
+    "weather_interp_limit": 3
+  },
+  "modeling": {
+    "horizon": 24,
+    "weather_mode": "perfect_forecast",
+    "n_buildings": 12,
+    "per_site": 2,
+    "min_coverage": 0.95,
+    "train_start": "2016-01-01",
+    "first_train_end": "2016-12-31",
+    "valid_days": 30,
+    "max_folds": 6,
+    "seed": 42,
+    "sealed_test_start": "2017-07-01"
   }
 }
