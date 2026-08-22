@@ -4,6 +4,11 @@
 1. 分箱邊界必須來自**參考期**並凍結。用當期資料重新分箱，兩邊分布定義就都變了，
    算出來的 PSI 沒有意義。
 2. 空箱要加平滑，否則 log(0) → inf，一根空箱就能讓 PSI 爆表。
+   **而且平滑方式不能是「把比例 clip 到某個極小值」**——本專案初版用 `clip(1e-6)`，
+   結果每個空箱貢獻約 1.1 的 PSI，週視窗（168 點／10 箱）遇上零膨脹資料常有 3 個以上空箱，
+   PSI 於是穩定落在 7–9，**312 個監控週 100% 判 alert**。
+   一個永遠 alert 的告警與一個壞掉的告警無法區分，維運會直接忽略它。
+   正解是 Laplace 平滑（每箱加 0.5 個計數再正規化），讓空箱的貢獻與樣本數掛鉤。
 3. 零膨脹欄位（本資料集的負荷）若用等寬分箱，幾乎所有質量會落在同一箱，
    PSI 對真實漂移不敏感。改用參考期的分位數分箱。
 """
@@ -11,7 +16,7 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-EPS = 1e-6
+ALPHA = 0.5      # Laplace 平滑的每箱先驗計數
 
 
 def psi_bins(ref: np.ndarray, n_bins: int = 10) -> np.ndarray:
@@ -34,8 +39,11 @@ def psi(ref: np.ndarray, cur: np.ndarray, edges: np.ndarray) -> float:
         return np.nan
     pr = np.histogram(r, bins=edges)[0].astype(float)
     pc = np.histogram(c, bins=edges)[0].astype(float)
-    pr = pr / max(pr.sum(), 1); pc = pc / max(pc.sum(), 1)
-    pr = np.clip(pr, EPS, None); pc = np.clip(pc, EPS, None)   # 空箱平滑，防 log(0)
+    # Laplace 平滑：每箱加 alpha 個計數再正規化。空箱的機率因此是 alpha/(n+k*alpha)，
+    # 隨樣本數縮小而不是固定在一個極小常數——這正是 clip 版本壞掉的地方。
+    a = ALPHA
+    pr = (pr + a) / (pr.sum() + a * len(pr))
+    pc = (pc + a) / (pc.sum() + a * len(pc))
     return float(((pc - pr) * np.log(pc / pr)).sum())
 
 

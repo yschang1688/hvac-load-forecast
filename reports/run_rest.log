@@ -17,3 +17,11 @@ weather_mode=lagged_only
 === [2/3] 還原 perfect_forecast 設定 ===
 restored
 === [3/3] P4 漂移監控與重訓 ===
+[1/6] Bobcat_education_Angela 828s 累計 104 列
+[2/6] Bobcat_other_Howard 777s 累計 208 列
+[3/6] Bull_assembly_Brandon 799s 累計 312 列
+[4/6] Bull_education_Linnie 3089s 累計 416 列
+[5/6] Cockatoo_lodging_Aimee 6583s 累計 520 列
+[6/6] Eagle_education_Raul 525s 累計 624 列
+落盤 reports/p4_drift.csv
+=== 全部完成 ===
