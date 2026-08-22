@@ -24,9 +24,11 @@
 |---|---|
 | P1 資料契約與品質閘 | ✅ 完成（`reports/P1_REPORT.md`，465 棟實跑） |
 | P2 防洩漏特徵與切分 | ✅ 完成（`reports/P2_REPORT.md`） |
-| P3 策略 × 架構對照 | ✅ 第一輪完成（`reports/P3_REPORT.md`）；🟡 第二輪 `lagged_only` 與 P4 背景跑中 |
-| P4 漂移監控與 retrain 自動化 | 🟡 程式完成（`src/drift.py`／`src/run_p4.py`），背景跑中 |
-| P5 FastAPI＋SQLAlchemy 服務層 | ⬜ 未開始 |
+| P3 策略 × 架構對照 | ✅ 兩輪都完成（`reports/P3_REPORT.md`，含天氣模式附錄） |
+| P4 漂移監控與 retrain 自動化 | ✅ 完成（`reports/P4_REPORT.md`） |
+| P5 FastAPI＋SQLAlchemy 服務層 | ✅ 完成（`reports/P5_REPORT.md`） |
+
+**五個 Phase 全部完成，50 測試全綠。** 剩下的是求職面的回填（見文末清單）。
 
 測試 29 則全綠：`.venv/bin/python -m pytest tests/ -q`
 

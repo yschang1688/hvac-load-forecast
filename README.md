@@ -15,10 +15,20 @@
 ## 進度
 
 - [x] **P1 資料契約與品質閘** — 6 條規則、三級判定、465 棟實跑（[報告](reports/P1_REPORT.md)）
-- [ ] P2 防洩漏特徵管線
-- [ ] P3 多步預測策略與架構對照（LightGBM／LSTM／Transformer）
-- [ ] P4 漂移監控與 retrain 自動化
-- [ ] P5 服務層與 API contract
+- [x] **P2 防洩漏特徵管線** — 兩型時序洩漏各有守衛、rolling-origin 切分（[報告](reports/P2_REPORT.md)）
+- [x] **P3 多步預測策略與架構對照** — 3 策略 × 4 架構 × 12 棟 × 4 folds，兩種天氣模式（[報告](reports/P3_REPORT.md)）
+- [x] **P4 漂移監控與 retrain 自動化** — 624 個監控週、注入演練、對照組（[報告](reports/P4_REPORT.md)）
+- [x] **P5 服務層與 API contract** — FastAPI＋SQLAlchemy＋PostgreSQL、多廠牌方言歸一（[報告](reports/P5_REPORT.md)）
+
+## 幾個結論
+
+- **主結論取決於 2 個視窗**：45 個評估視窗中排除 2 個「冰機實質關機」的，
+  模型對基準線就從 p=0.590 不可宣稱翻成 p<0.0001 可宣稱。因門檻未事前宣告，本專案採**不可宣稱**。
+- **遞迴式多步預測比什麼都不做更差**（p=0.003）：誤差沿步長放大 2.25×，
+  省下 23 個模型的維運成本買到的是劣於「抄上週同時刻」的結果。
+- **PSI 在這個場域沒有鑑別力**：624 個監控週判了 624 次 alert，換三種參考期都一樣。
+  該監控的是模型的誤差，不是模型的輸入。
+- **完美氣象預報的價值量不出來**：perfect vs lagged 全部落在雜訊帶內。
 
 ## 快速開始
 
@@ -26,7 +36,11 @@
 uv venv .venv && uv pip install --python .venv/bin/python -r requirements.txt
 src/fetch_data.sh                      # 取資料（走 Git LFS API，附 SHA256 對帳）
 .venv/bin/python src/run_quality.py    # P1：品質閘跑全部案場
-.venv/bin/python -m pytest tests/ -q
+.venv/bin/python src/run_p3.py         # P3：策略 × 架構對照
+.venv/bin/python src/run_p4.py         # P4：部署模擬與漂移監控
+docker compose up -d                   # P5 需要 PostgreSQL
+.venv/bin/uvicorn --app-dir src service:app   # P5：模型服務
+.venv/bin/python -m pytest tests/ -q   # 50 則（13 則需 PostgreSQL，未啟動則 skip）
 ```
 
 > 取資料為什麼不是 `curl raw.githubusercontent.com`：該 repo 用 Git LFS，直接抓只會得到
