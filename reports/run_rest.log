@@ -11,3 +11,9 @@ weather_mode=lagged_only
 [8/12] Fox_education_Theodore  300s  累計 192 列
 [9/12] Fox_office_Essie  6094s  累計 216 列
 [10/12] Hog_education_Wayne  6368s  累計 240 列
+[11/12] Hog_office_Bryan  1706s  累計 264 列
+[12/12] Moose_education_Marlon  341s  累計 270 列
+落盤 reports/p3_results_lagged_only.csv（270 列）
+=== [2/3] 還原 perfect_forecast 設定 ===
+restored
+=== [3/3] P4 漂移監控與重訓 ===

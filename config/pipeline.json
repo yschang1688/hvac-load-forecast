@@ -45,7 +45,7 @@
   },
   "modeling": {
     "horizon": 24,
-    "weather_mode": "lagged_only",
+    "weather_mode": "perfect_forecast",
     "n_buildings": 12,
     "per_site": 2,
     "min_coverage": 0.95,
