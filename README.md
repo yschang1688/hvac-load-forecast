@@ -2,6 +2,23 @@
 
 建築冷卻負荷（chilled water）的多步時序預測，與它的驗收流程。
 
+> **In brief** — A multi-building chilled-water load forecasting pipeline whose real subject is
+> *whether the reported accuracy can be trusted*. One pipeline and one config file serve 465
+> buildings with zero per-building code. Headline finding: the study's main conclusion flips on
+> 2 of 45 evaluation windows, so it is reported as **not claimable**. Also quantifies why PSI
+> drift monitoring fails in this domain (624 of 624 weeks alerted).
+
+## 想看什麼，去哪裡
+
+| 你想看 | 去這裡 |
+|---|---|
+| 為什麼一條「合理」的品質規則會製造 70% 誤報 | [P1 報告](reports/P1_REPORT.md) |
+| 時序洩漏的第二種，靜態檢查抓不到的那種 | [P2 報告](reports/P2_REPORT.md) · [`src/features.py`](src/features.py) |
+| 主結論取決於 45 個視窗中的 2 個 | [P3 報告](reports/P3_REPORT.md) |
+| PSI 在非平穩場域為何失效，以及該用什麼替代 | [P4 報告](reports/P4_REPORT.md) |
+| 多廠牌欄位方言怎麼歸一，schema 違規怎麼擋 | [P5 報告](reports/P5_REPORT.md) · [`src/contracts.py`](src/contracts.py) |
+| 非顯而易見的設計決定與踩過的坑 | [設計筆記](docs/DESIGN_NOTES.md) |
+
 資料源：[Building Data Genome Project 2](https://github.com/buds-lab/building-data-genome-project-2)（CC BY-SA 4.0），
 1,600+ 棟建築的逐時計量資料，本專案使用其中的冰水表、氣象與建物中繼資料。
 

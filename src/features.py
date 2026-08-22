@@ -36,7 +36,7 @@ def calendar_features(idx: pd.DatetimeIndex) -> pd.DataFrame:
 def load_lag_features(y: pd.Series, cfg: dict) -> pd.DataFrame:
     """負荷的落後與滾動統計。全部經 shift(1) 起算——時點 t 的特徵只看得到 t-1 以前。
 
-    因果假設（JD 原文要求「被質疑時答得出來」）：
+    因果假設（每個特徵都要答得出「為什麼是它」）：
     - lag_1/2/3    ：熱慣性，前幾小時的負荷是當下負荷最強的預測因子
     - lag_24/48/168：日內、隔日與週節律（辦公建築週間/週末的使用型態差異）
     - roll_mean_24 ：近一日的基準水準，吸收季節與營運狀態的緩慢漂移
