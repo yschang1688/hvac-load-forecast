@@ -17,8 +17,8 @@
 from __future__ import annotations
 from datetime import datetime
 
-from sqlalchemy import (Boolean, DateTime, Float, ForeignKey, Integer, String,
-                        UniqueConstraint, Index)
+from sqlalchemy import (DDL, Boolean, DateTime, Float, ForeignKey, Integer, String,
+                        UniqueConstraint, Index, event)
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 
@@ -68,7 +68,9 @@ class Prediction(Base):
     target_ts: Mapped[datetime] = mapped_column(DateTime)      # 被預測的時點
     horizon: Mapped[int] = mapped_column(Integer)              # target_ts - issued_at（小時）
     y_pred: Mapped[float] = mapped_column(Float)
-    y_true: Mapped[float | None] = mapped_column(Float, nullable=True)  # 事後回填
+    # 事後回填的實際值（＝actual_load）。由 `schedule.backfill_actuals` 從 `observations` 填入，
+    # 不在寫預測時填——寫預測時實際值還不存在。
+    y_true: Mapped[float | None] = mapped_column(Float, nullable=True)
 
     site: Mapped[Site] = relationship(back_populates="predictions")
     __table_args__ = (
@@ -94,3 +96,69 @@ class QualityEvent(Base):
         UniqueConstraint("site_id", "ts", "rule_code", name="uq_qe_site_ts_rule"),
         Index("ix_qe_site_ts", "site_id", "ts"),
     )
+
+
+class Observation(Base):
+    """實際量測值（canonical 單位 kW）。ingestion 閘口通過的讀數寫這裡。
+
+    P5 版本只把通過的讀數記成 `quality_events` 的 ACCEPTED 事件列，實際值藏在 `value_raw`——
+    能存但不能拿來算誤差：事件表的語意是「閘門做了什麼」，不是「負荷是多少」。
+    P7 把實際值獨立成表，理由有二：(1) 回填 `predictions.y_true` 需要以 (site, ts) 精確對應；
+    (2) seasonal-naive 基準線要取「上週同時刻」的實際值，同樣要從這裡取。
+    """
+    __tablename__ = "observations"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    site_id: Mapped[int] = mapped_column(ForeignKey("sites.id"), index=True)
+    ts: Mapped[datetime] = mapped_column(DateTime)
+    chw_load_kw: Mapped[float] = mapped_column(Float)
+    __table_args__ = (UniqueConstraint("site_id", "ts", name="uq_obs_site_ts"),)
+
+
+# ---------------------------------------------------------------------------
+# 監控 view：預測誤差與週 skill（P7）
+#
+# skill ＝ 模型 MAE ÷ seasonal-naive MAE，與 P3／P4 同一個定義，**同一批列**上計算：
+# 只有「實際值已回填」且「上週同時刻的實際值存在」的列才進分子與分母。
+# 若改用 LEFT JOIN 再把缺的基準線當 0，分母會被灌水、skill 被壓低——看起來模型變好了，
+# 其實是基準線被偷換成「預測 0」。守門測試 test_weekly_skill_excludes_rows_without_naive 釘這條。
+#
+# 刻意不用 MAPE：冰水負荷零膨脹，關機時分母趨近 0，MAPE 會爆掉（P3「分母退化」一節）。
+# 用 CREATE OR REPLACE：metadata 的 after_create 在每次 create_all 都會觸發（服務每次啟動都呼叫）。
+# 刻意不在 view 裡寫 CURRENT_DATE：歷史回放時牆鐘與模擬時點不同，
+# 同 P5 `trained_at` 的牆鐘 bug。時間範圍一律由呼叫端以參數傳入。
+# 週的切法是 PostgreSQL `date_trunc('week')`（週一起算），以 issued_at 歸週。
+# 以「案場×週」彙總、跨模型版本合併：skill 是相對免費基準線的比值，不同版本可直接比；
+# 監控要回答的是「這個案場最近是否比平常差」。**skill 的定義只寫在這裡一處**，
+# Python 端只讀不重算——兩處定義時，一處寫錯另一處照樣綠燈（本專案的守門測試實際抓到過）。
+# ---------------------------------------------------------------------------
+
+_V_ERRORS = """
+CREATE OR REPLACE VIEW v_prediction_errors AS
+SELECT p.site_id, p.model_version_id, p.issued_at, p.target_ts, p.horizon,
+       p.y_pred, p.y_true, o.chw_load_kw AS y_naive,
+       abs(p.y_pred - p.y_true)      AS abs_err_model,
+       abs(o.chw_load_kw - p.y_true) AS abs_err_naive
+FROM predictions p
+JOIN observations o
+  ON o.site_id = p.site_id
+ AND o.ts = p.target_ts - interval '168 hours'
+WHERE p.y_true IS NOT NULL
+"""
+
+_V_WEEKLY = """
+CREATE OR REPLACE VIEW v_weekly_skill AS
+SELECT site_id,
+       date_trunc('week', issued_at)                        AS week_start,
+       count(DISTINCT model_version_id)                     AS n_versions,
+       count(*)                                             AS n,
+       avg(abs_err_model)                                   AS mae_model,
+       avg(abs_err_naive)                                   AS mae_naive,
+       avg(abs_err_model) / nullif(avg(abs_err_naive), 0)   AS skill
+FROM v_prediction_errors
+GROUP BY site_id, date_trunc('week', issued_at)
+"""
+
+event.listen(Base.metadata, "after_create", DDL(_V_ERRORS))
+event.listen(Base.metadata, "after_create", DDL(_V_WEEKLY))
+event.listen(Base.metadata, "before_drop", DDL("DROP VIEW IF EXISTS v_weekly_skill"))
+event.listen(Base.metadata, "before_drop", DDL("DROP VIEW IF EXISTS v_prediction_errors"))

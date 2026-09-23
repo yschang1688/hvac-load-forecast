@@ -1,0 +1,31 @@
+=== P3 重新聚合（perfect_forecast）：主規則 零值段 ≥24h、佔比 >50% → 排除 7 個視窗 ===
+  Bobcat_education_Angela    fold0  關機佔比 92%  lgbm_direct skill 0.48
+  Bobcat_other_Howard        fold0  關機佔比 92%  lgbm_direct skill 0.55
+  Hog_education_Wayne        fold0  關機佔比 71%  lgbm_direct skill 4.47
+  Hog_education_Wayne        fold2  關機佔比 50%  lgbm_direct skill 1.04
+  Moose_education_Marlon     fold0  關機佔比 100%  lgbm_direct skill nan
+  Moose_education_Marlon     fold1  關機佔比 100%  lgbm_direct skill nan
+  Moose_education_Marlon     fold2  關機佔比 100%  lgbm_direct skill nan
+
+保留 41 個視窗
+  lgbm_direct     vs 基準線：n=41 mean 0.835 median 0.591 diff -0.165 p=0.3303 → 雜訊帶內(|差|<2SE=0.336)
+  lgbm_recursive  vs 基準線：n=41 mean 1.730 median 1.103 diff +0.730 p=0.0048 → 可宣稱
+  lstm_seq2seq    vs 基準線：n=41 mean 1.708 median 0.619 diff +0.708 p=0.4608 → 雜訊帶內(|差|<2SE=1.901)
+  transformer     vs 基準線：n=41 mean 1.360 median 0.657 diff +0.360 p=0.5289 → 雜訊帶內(|差|<2SE=1.134)
+  lgbm_direct vs lgbm_recursive: diff -0.895 p=0.0000 → 可宣稱
+  lgbm_direct vs lstm_seq2seq: diff -0.873 p=0.2777 → 雜訊帶內(|差|<2SE=1.587)
+  lgbm_direct vs transformer: diff -0.526 p=0.2065 → 雜訊帶內(|差|<2SE=0.819)
+
+=== 門檻敏感度：lgbm_direct vs 基準線 ===
+   零值段    佔比   排除  skill 平均        p  判定
+   12h   30%   16     0.633   0.0000  可宣稱
+   12h   50%    8     0.679   0.0000  可宣稱
+   12h   70%    8     0.679   0.0000  可宣稱
+   24h   30%   14     0.630   0.0000  可宣稱
+   24h   50%    7     0.835   0.3303  雜訊帶內(|差|<2SE=0.336)
+   24h   70%    6     0.840   0.3333  雜訊帶內(|差|<2SE=0.328)
+   48h   30%   12     0.820   0.3454  雜訊帶內(|差|<2SE=0.376)
+   48h   50%    6     0.840   0.3333  雜訊帶內(|差|<2SE=0.328)
+   48h   70%    5     0.924   0.6767  雜訊帶內(|差|<2SE=0.362)
+
+結論在 9 組門檻上不一致——取決於門檻

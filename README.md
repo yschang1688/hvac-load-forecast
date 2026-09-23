@@ -17,7 +17,9 @@
 | 主結論取決於 45 個視窗中的 2 個 | [P3 報告](reports/P3_REPORT.md) |
 | PSI 在非平穩場域為何失效，以及該用什麼替代 | [P4 報告](reports/P4_REPORT.md) |
 | 多廠牌欄位方言怎麼歸一，schema 違規怎麼擋 | [P5 報告](reports/P5_REPORT.md) · [`src/contracts.py`](src/contracts.py) |
+| 預測怎麼跟實際值對帳、每週 skill 怎麼用 SQL 算、基準為何用往年同期 | [P7 報告](reports/P7_REPORT.md) · [`src/db.py`](src/db.py) |
 | 非顯而易見的設計決定與踩過的坑 | [設計筆記](docs/DESIGN_NOTES.md) |
+| 商用系統的輸入與功能，對照本專案做了什麼、沒做什麼 | [領域參考](docs/DOMAIN_REFERENCE.md) |
 | 三個結論的下一步：哪些做、哪些資料說不該做 | [P6 路線圖](docs/ROADMAP_P6.md) · [氣象預報 MCP 契約](docs/WEATHER_MCP_CONTRACT.md) · [特徵提案裁定](docs/DECISION_P6_FEATURES.md) |
 
 資料源：[Building Data Genome Project 2](https://github.com/buds-lab/building-data-genome-project-2)（CC BY-SA 4.0），
@@ -38,6 +40,7 @@
 - [x] **P4 漂移監控與 retrain 自動化** — 624 個監控週、注入演練、對照組（[報告](reports/P4_REPORT.md)）
 - [x] **P5 服務層與 API contract** — FastAPI＋SQLAlchemy＋PostgreSQL、多廠牌方言歸一（[報告](reports/P5_REPORT.md)）
 - [ ] **P6 誤差監控與氣象預報契約** — 主訊號改誤差、PSI 降級；`forecast`／`noisy_forecast` 兩種新天氣模式；部署模擬重跑未做（[路線圖](docs/ROADMAP_P6.md)）
+- [x] **P7 實際值回填與 SQL 週 skill** — 端到端回放 6 棟真實建築；多年同期基準誤報 16% vs 滾動 23%；冰機關機近似規則（[報告](reports/P7_REPORT.md)）
 
 ## 幾個結論
 
@@ -49,6 +52,8 @@
   該監控的是模型的誤差，不是模型的輸入。P6 已把誤差監控做成函式並以同一批 624 週離線重算：
   它有鑑別力（誤報 28–48%、偵測 51–67%，依基準期選法），但**固定早期基準會被季節性咬**。
 - **完美氣象預報的價值量不出來**：perfect vs lagged 全部落在雜訊帶內。
+- **誤差監控的基準要用往年同期**：6 棟真實建築回放，同期基準誤報 16%、滾動基準 23%（p=0.001），
+  偵測率 40% vs 23%。用排除關機視窗的規則重新聚合 P3，結論仍取決於門檻，所以依舊**不可宣稱**。
 
 ## 快速開始
 
@@ -59,9 +64,11 @@ src/fetch_data.sh                      # 取資料（走 Git LFS API，附 SHA25
 .venv/bin/python src/run_p3.py         # P3：策略 × 架構對照
 .venv/bin/python src/run_p4.py         # P4：部署模擬與漂移監控
 .venv/bin/python src/analyze_p4_error.py   # P6：誤差監控 vs PSI 離線重算（不重跑模擬，秒級）
+.venv/bin/python src/analyze_p3_shutdown.py # P7：關機規則重新聚合 P3（不重訓）
+.venv/bin/python src/replay_p7.py          # P7：端到端回放（需 PostgreSQL，約 25 分鐘）
 docker compose up -d                   # P5 需要 PostgreSQL
 .venv/bin/uvicorn --app-dir src service:app   # P5：模型服務
-.venv/bin/python -m pytest tests/ -q   # 61 則（14 則需 PostgreSQL，未啟動則 skip）
+.venv/bin/python -m pytest tests/ -q   # 78 則（25 則需 PostgreSQL，未啟動則 skip）
 ```
 
 > 取資料為什麼不是 `curl raw.githubusercontent.com`：該 repo 用 Git LFS，直接抓只會得到
