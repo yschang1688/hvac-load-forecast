@@ -96,6 +96,10 @@ def ingest(site_key: str, batch: IngestBatch, s: Session = Depends(get_db)) -> I
             ).on_conflict_do_nothing(constraint="uq_qe_site_ts_rule"))
             continue
         accepted += 1
+        # 實際值落 observations（UPSERT：同一時點重送以最新一筆為準，重放不產生重複列）
+        ost = pg_insert(M.Observation).values(site_id=site.id, ts=r.ts, chw_load_kw=r.chw_load_kw)
+        s.execute(ost.on_conflict_do_update(constraint="uq_obs_site_ts",
+                                            set_={"chw_load_kw": ost.excluded.chw_load_kw}))
         s.execute(pg_insert(M.Prediction.__table__.metadata.tables["quality_events"]).values(
             site_id=site.id, ts=r.ts, rule_code="ACCEPTED", severity="INFO",
             value_raw=r.chw_load_kw, action="flagged", detail=""

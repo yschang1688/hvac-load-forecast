@@ -13,6 +13,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 
 import numpy as np
+import pandas as pd
 import sqlalchemy as sa
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session
@@ -144,3 +145,133 @@ def register_model_version(s: Session, site_key: str, algo: str, train_start: da
                         trained_at=trained_at or train_end)
     s.add(mv); s.commit()
     return mv.id
+
+
+# ---------------------------------------------------------------------------
+# P7｜實際值回填 → SQL 週 skill → P6 誤差監控
+# ---------------------------------------------------------------------------
+
+import operating_state as OS  # noqa: E402
+
+_BACKFILL = sa.text("""
+UPDATE predictions p
+   SET y_true = o.chw_load_kw
+  FROM observations o
+ WHERE o.site_id = p.site_id
+   AND o.ts = p.target_ts
+   AND p.site_id = :site_id
+   AND p.target_ts <= :as_of
+   AND p.y_true IS DISTINCT FROM o.chw_load_kw
+""")
+
+
+def backfill_actuals(s: Session, site_key: str, as_of: datetime) -> int:
+    """把 `observations` 的實際值回填到 `predictions.y_true`，回傳更新列數。
+
+    冪等：`IS DISTINCT FROM` 讓第二次執行更新 0 列，實際值事後被更正時則會重填。
+    `as_of` 由呼叫端傳入而非取牆鐘——歷史回放時兩者不同（P5 `trained_at` 的教訓）。
+    """
+    site = _site(s, site_key)
+    n = s.execute(_BACKFILL, {"site_id": site.id, "as_of": as_of}).rowcount
+    s.commit()
+    return n
+
+
+def weekly_skill(s: Session, site_key: str, until: datetime) -> list[dict]:
+    """讀 `v_weekly_skill`：`until` 之前**已結束**的週（週一起算）。
+
+    skill 的定義只在 view 裡（`db._V_WEEKLY`）；這裡只讀不重算。
+    """
+    site = _site(s, site_key)
+    rows = s.execute(sa.text("""
+        SELECT week_start, n, n_versions, mae_model, mae_naive, skill
+          FROM v_weekly_skill
+         WHERE site_id = :sid AND week_start + interval '7 days' <= :until
+         ORDER BY week_start"""),
+        {"sid": site.id, "until": until}).mappings().all()
+    return [dict(r) for r in rows]
+
+
+def _week_state(s: Session, site_id: int, week_start: datetime, cfg: dict) -> tuple[str, float]:
+    """以觀測值判定該週的冰機運轉狀態；前後各帶 min_zero_run_hours 當 context，避免跨週停機被截斷。"""
+    pad = timedelta(hours=int(cfg.get("min_zero_run_hours", OS.DEFAULTS["min_zero_run_hours"])))
+    lo, hi = week_start - pad, week_start + timedelta(days=7) + pad
+    obs = s.execute(sa.select(M.Observation.ts, M.Observation.chw_load_kw)
+                    .where(M.Observation.site_id == site_id,
+                           M.Observation.ts >= lo, M.Observation.ts < hi)).all()
+    full = pd.date_range(lo, hi, freq="h", inclusive="left")
+    ctx = pd.Series({r.ts: r.chw_load_kw for r in obs}, dtype=float).reindex(full)
+    week = ctx[(ctx.index >= week_start) & (ctx.index < week_start + timedelta(days=7))]
+    return OS.window_state(week, cfg, context=ctx)
+
+
+@dataclass
+class ErrorCheck:
+    site_key: str
+    week_start: datetime | None
+    skill_now: float
+    baseline: float
+    baseline_mode: str           # same_period / rolling / none
+    baseline_n: int
+    operating: str               # operating / shutdown / unknown
+    decision: RetrainDecision | None
+    reason: str
+
+
+def weekly_error_check(s: Session, site_key: str, as_of: datetime, cfg: dict | None = None) -> ErrorCheck:
+    """每週誤差監控：回填 → 取上一個完整週的 skill → 判運轉狀態 → 算基準 → P6 判定。
+
+    **基準（John 09-23 裁定：多年同期優先）**：
+    - `same_period`：往年同一時期（±same_period_weeks 週）的週 skill 中位數。
+      P6 離線重算發現固定早期基準會被季節性咬（冬季基準偏低，夏季誤差自然高於它）；
+      同期基準比的是「今年這時候 vs 往年這時候」，季節被抵掉。
+    - `rolling`：往年同期不足 min_baseline_weeks 週時，退回最近 rolling_weeks 週。
+      抓突變快，但緩慢漂移會被吸收成新常態（P6 實測）。回傳值標明用的是哪一種。
+    關機與 unknown 的週**不進基準、也不判定**：P3 已證明任何正規化子在關機視窗上都會退化。
+    """
+    c = {"min_rows": 72, "same_period_weeks": 3, "min_baseline_weeks": 3, "rolling_weeks": 8,
+         "error_ratio_alert": drift.ERROR_RATIO_ALERT, "min_retrain_gap_days": 28,
+         **OS.DEFAULTS, **(cfg or {})}
+    site = _site(s, site_key)
+    backfill_actuals(s, site_key, as_of)
+    weeks = [w for w in weekly_skill(s, site_key, as_of)
+             if w["n"] >= c["min_rows"] and w["skill"] is not None]
+    if not weeks:
+        return ErrorCheck(site_key, None, float("nan"), float("nan"), "none", 0, "unknown", None,
+                          "沒有已回填且樣本足夠的完整週")
+    states = {w["week_start"]: _week_state(s, site.id, w["week_start"], c)[0] for w in weeks}
+    cur = weeks[-1]
+    ws = cur["week_start"]
+    if states[ws] != "operating":
+        return ErrorCheck(site_key, ws, float(cur["skill"]), float("nan"), "none", 0, states[ws], None,
+                          f"該週判為 {states[ws]}，不判定（關機週的 skill 分母退化）")
+
+    hist = [w for w in weeks[:-1] if states[w["week_start"]] == "operating"]
+    same = [w["skill"] for w in hist
+            if (ws - w["week_start"]).days >= 330
+            and _weeks_apart_mod_year(ws, w["week_start"]) <= c["same_period_weeks"]]
+    if len(same) >= c["min_baseline_weeks"]:
+        mode, base_vals = "same_period", same
+    else:
+        mode, base_vals = "rolling", [w["skill"] for w in hist[-c["rolling_weeks"]:]]
+    base = drift.error_baseline(base_vals, min_weeks=c["min_baseline_weeks"])
+    if not np.isfinite(base):
+        return ErrorCheck(site_key, ws, float(cur["skill"]), base, mode, len(base_vals), "operating", None,
+                          f"基準週數不足（{len(base_vals)} < {c['min_baseline_weeks']}），不判定")
+    d = weekly_retrain_check(s, site_key, {}, as_of, min_gap_days=c["min_retrain_gap_days"],
+                             skill_now=float(cur["skill"]), skill_baseline=base,
+                             error_ratio_alert=c["error_ratio_alert"])
+    return ErrorCheck(site_key, ws, float(cur["skill"]), base, mode, len(base_vals), "operating", d, d.reason)
+
+
+def _weeks_apart_mod_year(a: datetime, b: datetime) -> float:
+    """兩週在「年內位置」上相差幾週（跨年環繞），用來找往年同期。"""
+    da = (a - b).days % 364
+    return min(da, 364 - da) / 7
+
+
+def _site(s: Session, site_key: str) -> M.Site:
+    site = s.scalar(sa.select(M.Site).where(M.Site.site_key == site_key))
+    if site is None:
+        raise ValueError(f"未知案場 {site_key}")
+    return site

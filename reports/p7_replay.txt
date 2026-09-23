@@ -1,0 +1,18 @@
+[1/6] Bobcat_education_Angela inject=False 預測 16896 列 fit 63s 共 87s  SQL vs pandas 週 skill 最大差 2.66e-15（93 週）
+[1/6] Bobcat_education_Angela inject=True 預測 16896 列 fit 59s 共 91s  SQL vs pandas 週 skill 最大差 2.66e-15（93 週）
+[2/6] Bobcat_other_Howard inject=False 預測 16896 列 fit 59s 共 133s  SQL vs pandas 週 skill 最大差 2.49e-14（99 週）
+[2/6] Bobcat_other_Howard inject=True 預測 16896 列 fit 59s 共 116s  SQL vs pandas 週 skill 最大差 2.49e-14（99 週）
+[3/6] Bull_assembly_Brandon inject=False 預測 16896 列 fit 57s 共 116s  SQL vs pandas 週 skill 最大差 2.66e-15（101 週）
+[3/6] Bull_assembly_Brandon inject=True 預測 16896 列 fit 57s 共 135s  SQL vs pandas 週 skill 最大差 3.11e-15（101 週）
+[4/6] Bull_education_Linnie inject=False 預測 16896 列 fit 57s 共 112s  SQL vs pandas 週 skill 最大差 2.22e-15（101 週）
+[4/6] Bull_education_Linnie inject=True 預測 16896 列 fit 56s 共 114s  SQL vs pandas 週 skill 最大差 3.55e-15（101 週）
+[5/6] Cockatoo_lodging_Aimee inject=False 預測 16896 列 fit 80s 共 133s  SQL vs pandas 週 skill 最大差 1.78e-15（101 週）
+[5/6] Cockatoo_lodging_Aimee inject=True 預測 16896 列 fit 77s 共 107s  SQL vs pandas 週 skill 最大差 2.00e-15（101 週）
+[6/6] Eagle_education_Raul inject=False 預測 16896 列 fit 63s 共 119s  SQL vs pandas 週 skill 最大差 8.88e-16（97 週）
+[6/6] Eagle_education_Raul inject=True 預測 16896 列 fit 62s 共 135s  SQL vs pandas 週 skill 最大差 8.88e-16（97 週）
+
+=== 注入組：誤報率（注入前）與偵測率（注入後），模型凍結 ===
+  auto          誤報 17% (n=140)  偵測 40% (n=150)  未判定 10  基準來源 {'same_period': 283, 'none': 10, 'rolling': 7}
+  rolling_only  誤報 26% (n=140)  偵測 23% (n=150)  未判定 10  基準來源 {'rolling': 290, 'none': 10}
+  auto          首次 alert 距注入週數：Angela=4, Howard=10, Brandon=1, Linnie=1, Aimee=0, Raul=0
+  rolling_only  首次 alert 距注入週數：Angela=1, Howard=8, Brandon=0, Linnie=0, Aimee=6, Raul=0
