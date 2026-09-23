@@ -207,3 +207,25 @@ def test_no_capacity_means_no_guess(client):
         "vendor": "vendor_a",
         "readings": [{"timestamp": "2017-08-01T00:00:00", "chwLoadKw": 1e9}]})
     assert r.status_code == 200 and r.json()["accepted"] == 1
+
+
+def test_weekly_check_error_signal_overrides_psi(client):
+    """P6：傳入誤差訊號時，PSI 再高也不觸發；誤差惡化才觸發（仍受冷卻期約束）。
+    這條釘的是「PSI 降級為旁證」——否則 624/624 alert 的 PSI 會把誤差訊號淹掉。"""
+    import service, schedule
+    key = _mk_site(client, "SITE_ERR")
+    with service.SessionLocal() as s:
+        schedule.register_model_version(s, key, "lgbm_direct", datetime(2016, 1, 1),
+                                        datetime(2016, 12, 31), 3.0, 0.7, "initial",
+                                        trained_at=datetime(2016, 12, 31))
+        hot = {"load_lag_1": 9.0}                                       # P4 實測量級的 PSI
+        ok = schedule.weekly_retrain_check(s, key, hot, datetime(2017, 3, 1),
+                                           skill_now=0.62, skill_baseline=0.60)
+        bad = schedule.weekly_retrain_check(s, key, hot, datetime(2017, 3, 1),
+                                            skill_now=0.95, skill_baseline=0.60)
+        cold = schedule.weekly_retrain_check(s, key, hot, datetime(2017, 1, 8),
+                                             skill_now=0.95, skill_baseline=0.60)
+    assert ok.signal == "error" and ok.state == "stable" and ok.should_retrain is False
+    assert ok.max_psi == 9.0                                             # PSI 仍回報，只是不觸發
+    assert bad.should_retrain is True and bad.error_ratio > 1.3
+    assert cold.should_retrain is False and "冷卻期" in cold.reason

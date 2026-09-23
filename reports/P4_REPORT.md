@@ -87,6 +87,10 @@ PSI 在這個場域則完全沒有。
 
 ## 五、下一輪要改的三件事
 
+> **P6 進度（2026-09-23）**：第 1、2 件已做成函式與守門測試（`drift.error_baseline`／`error_verdict`、
+> `schedule.weekly_retrain_check(skill_now=…)`、`schedule.should_promote`），並以本報告的 624 週離線重算，
+> 結果與新發現（固定基準被季節性咬）見 [`docs/ROADMAP_P6.md`](../docs/ROADMAP_P6.md)。部署模擬尚未重跑。
+
 1. **主監控訊號改為誤差**，PSI 降級為輔助（它仍能說明「輸入端發生了什麼」）
 2. 重訓觸發要**同時看誤差惡化與冷卻期**，並保留「重訓後若未改善則回滾」的路徑
 3. 現行實作每次重訓都重配 24 個 LightGBM 模型，單棟最長跑到 51 分鐘；

@@ -86,14 +86,77 @@ def future_weather_block(wx: pd.DataFrame, idx: pd.DatetimeIndex, horizon: int,
 
     兩種都跑，差距＝「氣象預報對這個模型值多少」。只報其中一個都是片面的。
     """
-    if cfg.get("weather_mode", "perfect_forecast") != "perfect_forecast":
+    mode = cfg.get("weather_mode", "perfect_forecast")
+    if mode == "lagged_only":
         return pd.DataFrame(index=idx)
+    if mode not in ("perfect_forecast", "noisy_forecast", "forecast"):
+        raise ValueError(f"未知 weather_mode={mode!r}")
     cols = cfg.get("future_weather_cols", ["airTemperature", "dewTemperature"])
+    if mode == "forecast":
+        # P6：由氣象預報 MCP／表格供給的真實預報，鍵為 (issued_at, target_ts)。
+        # 契約見 docs/WEATHER_MCP_CONTRACT.md；本輪只定契約與介面，尚無資料源。
+        fc = cfg.get("_forecast_frame")
+        if fc is None:
+            raise ValueError("weather_mode='forecast' 需要 cfg['_forecast_frame']（尚未接資料源）")
+        return forecast_block_from_frame(fc, idx, horizon, cols)
     w = _wx_aligned(wx, idx, cols, cfg)
     out = {}
     for h in range(1, horizon + 1):
         for c in cols:
             out[f"fut_{c}_h{h}"] = w[c].shift(-h)
+    blk = pd.DataFrame(out, index=idx)
+    if mode == "noisy_forecast":
+        blk = degrade_forecast(blk, horizon, cols, cfg)
+    return blk
+
+
+def degrade_forecast(blk: pd.DataFrame, horizon: int, cols: list[str], cfg: dict) -> pd.DataFrame:
+    """**中間態**：在完美預報上加隨步長放大的雜訊，把 perfect（上界）與 lagged（下界）
+    之間的空白補一個「像真實預報」的點。
+
+    真實預報誤差隨前置時間增長；本函式用線性內插的標準差 σ(h)，端點由設定檔給
+    （`forecast_noise_sigma`：{變數: [σ@h1, σ@hH]}）。**雜訊尺度不是本專案量的**，
+    要引用公開 NWP 驗證數字並註明；沒有數字就不要宣稱這條線代表任何真實預報。
+    雜訊以固定種子一次生成、對訓練與驗證一視同仁——它模擬的是預報系統本身的誤差，
+    不是評估時才加的擾動。
+    """
+    sig = cfg.get("forecast_noise_sigma", {"airTemperature": [0.8, 1.8], "dewTemperature": [1.0, 2.2]})
+    rng = np.random.default_rng(int(cfg.get("forecast_noise_seed", 7)))
+    out = blk.copy()
+    for c in cols:
+        s1, sH = sig.get(c, [1.0, 2.0])
+        for h in range(1, horizon + 1):
+            s = s1 + (sH - s1) * (h - 1) / max(horizon - 1, 1)
+            k = f"fut_{c}_h{h}"
+            out[k] = out[k] + rng.normal(0.0, s, len(out))
+    return out
+
+
+def forecast_block_from_frame(fc: pd.DataFrame, idx: pd.DatetimeIndex, horizon: int,
+                              cols: list[str]) -> pd.DataFrame:
+    """把長表預報（issued_at, target_ts, 變數…）攤成時點 t 一列、t+1…t+H 的區塊。
+
+    因果規則只有一條：時點 t 這一列只能用 `issued_at <= t` 的預報，且取**最新一次**發布。
+    這條規則就是 P2 第二型洩漏在真實預報上的對應物——用「事後修正過的預報」或
+    「發布時間晚於 t 的預報」都是偷看未來，而且一樣不會被 shift 檢查抓到。
+    """
+    need = {"issued_at", "target_ts", *cols}
+    if not need.issubset(fc.columns):
+        raise ValueError(f"預報表缺欄位：{need - set(fc.columns)}")
+    fc = fc.sort_values(["target_ts", "issued_at"])
+    out = {f"fut_{c}_h{h}": np.full(len(idx), np.nan) for h in range(1, horizon + 1) for c in cols}
+    by_target = {ts: g for ts, g in fc.groupby("target_ts")}
+    for i, t in enumerate(idx):
+        for h in range(1, horizon + 1):
+            g = by_target.get(t + pd.Timedelta(hours=h))
+            if g is None:
+                continue
+            g = g[g.issued_at <= t]
+            if g.empty:
+                continue
+            row = g.iloc[-1]                       # issued_at 最新的一筆
+            for c in cols:
+                out[f"fut_{c}_h{h}"][i] = row[c]
     return pd.DataFrame(out, index=idx)
 
 

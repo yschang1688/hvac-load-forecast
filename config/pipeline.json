@@ -41,7 +41,18 @@
       "airTemperature",
       "dewTemperature"
     ],
-    "weather_interp_limit": 3
+    "weather_interp_limit": 3,
+    "forecast_noise_sigma": {
+      "airTemperature": [
+        0.8,
+        1.8
+      ],
+      "dewTemperature": [
+        1.0,
+        2.2
+      ]
+    },
+    "forecast_noise_seed": 7
   },
   "modeling": {
     "horizon": 24,
@@ -55,7 +66,8 @@
     "max_folds": 4,
     "seed": 42,
     "sealed_test_start": "2017-07-01",
-    "min_nonzero_frac": 0.6
+    "min_nonzero_frac": 0.6,
+    "_weather_mode_options": "perfect_forecast | lagged_only | noisy_forecast | forecast（見 docs/WEATHER_MCP_CONTRACT.md）"
   },
   "p4": {
     "ref_end": "2016-12-31",
@@ -66,5 +78,14 @@
     "min_retrain_gap_days": 28,
     "inject_start": "2017-07-01",
     "n_buildings": 6
+  },
+  "p6": {
+    "_comment": "誤差監控（主訊號）；PSI 降級為輔助。門檻事前宣告，見 src/drift.py 與 src/analyze_p4_error.py",
+    "error_ratio_warn": 1.15,
+    "error_ratio_alert": 1.3,
+    "baseline_weeks": 8,
+    "baseline_mode": "rolling",
+    "min_retrain_gap_days": 28,
+    "promote_only_if_improved": true
   }
 }
