@@ -18,7 +18,7 @@
 | PSI 在非平穩場域為何失效，以及該用什麼替代 | [P4 報告](reports/P4_REPORT.md) |
 | 多廠牌欄位方言怎麼歸一，schema 違規怎麼擋 | [P5 報告](reports/P5_REPORT.md) · [`src/contracts.py`](src/contracts.py) |
 | 非顯而易見的設計決定與踩過的坑 | [設計筆記](docs/DESIGN_NOTES.md) |
-| 三個結論的下一步：哪些做、哪些資料說不該做 | [P6 路線圖](docs/ROADMAP_P6.md) · [氣象預報 MCP 契約](docs/WEATHER_MCP_CONTRACT.md) |
+| 三個結論的下一步：哪些做、哪些資料說不該做 | [P6 路線圖](docs/ROADMAP_P6.md) · [氣象預報 MCP 契約](docs/WEATHER_MCP_CONTRACT.md) · [特徵提案裁定](docs/DECISION_P6_FEATURES.md) |
 
 資料源：[Building Data Genome Project 2](https://github.com/buds-lab/building-data-genome-project-2)（CC BY-SA 4.0），
 1,600+ 棟建築的逐時計量資料，本專案使用其中的冰水表、氣象與建物中繼資料。
