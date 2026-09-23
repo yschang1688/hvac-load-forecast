@@ -40,5 +40,37 @@
 1. **視窗層級關機門檻事前宣告後重跑 P3 聚合**（P3 待辦 1）——主結論能不能宣稱就看它，成本一次聚合、零訓練。
 2. **誤差監控的多年同期基準**（已裁定方向）——2016 訓練期以 out-of-fold 誤差建同期基準，2017 部署逐週對照同期；
    真實案場上線後每年累積一層。同一套多年同期資料也可當氣象預報缺席時的 climatology 退路（優於 `lagged_only` 的下界）。
-3. **DirRec／多輸出當單模型方案**，配 `noisy_forecast` 三種天氣模式一起跑（P3 待辦 2 的延伸）。
-4. NN 給足算力再判架構差異（P3 待辦 3）——算力最貴，排最後。
+3. **Seq2Seq（encoder-decoder，未來預報餵 decoder）給足算力重跑**——John 09-23 裁定為遞迴式的替代路線。
+   **先講清楚：這個架構 P3 已經做了。** `models.LSTMSeq2Seq` 就是 encoder 吃過去 L 小時、decoder 逐步吃未來
+   外生天氣輸出 24 步；`TimeSeriesTransformer` 同理；`LGBMMultiOutput` 是樹模型的 MIMO 版。
+   P3 的結果是三者與 lgbm_direct 全落雜訊帶，且兩個 NN 逐步長誤差幾乎是平的（欠擬合樣態）——
+   報告已註明這是算力預算的結果（序列 120、層數 1、epochs 20／patience 4），不是架構不適合。
+   所以本項不是「引進 Seq2Seq」，是**把 P3 待辦 3 做完**：
+
+   | 旋鈕 | P3 用的 | 本輪 | 落點 |
+   |---|---|---|---|
+   | 序列窗口 | 120 | 168（補回週節律，不再靠 lag168 通道代替） | `run_p3.SEQ_LEN` |
+   | 層數 | 1 | 2 | `LSTMSeq2Seq(layers=)`／`TimeSeriesTransformer(layers=)` |
+   | epochs／patience | 20／4 | 60／10 | `run_p3.py:122` |
+   | decoder 外生變數 | 乾球＋露點（perfect） | 同上，三種 weather_mode 各跑一次 | `config.features.future_weather_cols` |
+   | 天氣模式 | perfect、lagged | perfect、noisy、lagged | 三條線的差距＝預報價值的區間估計 |
+
+   成本：P3 報告估全網格 12 小時（M1 MPS）；三種天氣模式 ×3。**跑之前先宣告判定規則**（同 `analyze_p3.py`），
+   跑完若仍在雜訊帶內，結論就是「在 12 棟 × 4 folds 的樣本量下分不出架構差異」，不再加算力。
+   宣稱紅線不變：不得寫「Seq2Seq 解決了誤差累積」——那要與遞迴式配對檢定後才能說，而遞迴式已被判劣於基準線，
+   贏它沒有意義；要比的對象是 lgbm_direct 與 seasonal-naive。
+4. **DirRec** 當第二候選——只有在 3 仍分不出高下、而維運上真的需要單一模型時才做。
+
+## 外部方案對照（09-23，John 提供兩份 LLM 生成的比較／落地方案）
+
+兩份文件的主張與本 repo 現況逐條對照，避免把「已做過」當「新方向」：
+
+| 外部主張 | 本 repo 現況 | 差異 |
+|---|---|---|
+| Direct 首選，Recursive 只做 1–3 小時超短期 | P3 實測 direct 勝 recursive p<0.001；recursive 劣於免費基準線 | 一致；超短期用途未測，horizon 固定 24 |
+| Seq2Seq／MIMO 融合兩者優點，未來預報餵 decoder | `LSTMSeq2Seq`／`TimeSeriesTransformer`／`LGBMMultiOutput` 已實作並跑過 | **已做**，結果在雜訊帶內（欠擬合），見上表 |
+| Schema：`model_forecasts(predict_at, target_time, …, actual_load)` | P5 `predictions(issued_at, target_ts, horizon, model_version_id)`＋唯一鍵 UPSERT | 已有且多了版本鍵；`actual_load` 回填即 P6 誤差監控的資料來源，待接 |
+| `recommended_control_strategy` 欄位 | 無 | **刻意不做**：本專案不含控制決策，任何節能率宣稱都在紅線外 |
+| 補值：氣象線性插值、負荷用上週同時刻 | 氣象 `interpolate(limit=3)`；負荷長缺口不補（P1 規則） | 部分一致；「上週同時刻補負荷」會污染 lag168 特徵，不採 |
+| 熱慣性特徵：3／6 小時累積溫度 | 有 `airTemp_roll_mean_24`、lag1／lag24 | 可加 roll 3／6，成本低，但要走證據庫改動流程（先量再收） |
+| 日曆特徵含 `is_holiday` | 有 hour／dow／weekend／month，**無假日** | 真實案場必加；BDGP2 跨美英愛等多國，假日表要按 site 配 |
