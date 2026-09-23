@@ -79,3 +79,46 @@ def inject_concept_drift(y: pd.Series, start: pd.Timestamp, scale: float = 1.6,
     rolled = seg.shift(shift_hours).bfill()
     out.loc[m] = (rolled * scale).to_numpy()
     return out
+
+
+# ---------------------------------------------------------------------------
+# P6｜誤差監控：主訊號從「輸入分布」改為「模型誤差」
+#
+# P4 的實跑結論：PSI 在 624 個監控週判了 624 次 alert，換三種參考期都一樣；
+# 對注入的概念漂移，PSI 上升的週佔比 58%（擲硬幣 50%），凍結模型的實際誤差則是 77%。
+# 冰水負荷高度非平穩又零膨脹，週級特徵分布本來就週週不同——PSI 量到的是季節與
+# 運轉狀態，不是「模型該重訓了」。**該監控的是模型的誤差，不是模型的輸入。**
+#
+# 設計約束（事前宣告，避免事後看結果挑門檻）：
+# 1. 基準期（burn-in）的 skill 中位數在部署初期凍結，之後不得用含告警週的資料重算。
+# 2. 門檻是「相對於自己的基準」的倍率，不是絕對值——不同建築的 skill 尺度差很多。
+# 3. 基準期樣本不足即回 unknown，不得假裝判定（同 PSI 退化序列的原則）。
+# 4. PSI 降級為輔助訊號：它仍能說明「輸入端發生了什麼」，但不再觸發重訓。
+# ---------------------------------------------------------------------------
+
+ERROR_RATIO_ALERT = 1.3     # 事前宣告：當週 skill > 基準中位數 × 1.3 即 alert
+ERROR_RATIO_WARN = 1.15
+MIN_BASELINE_WEEKS = 4
+
+
+def error_baseline(skills: "list[float] | np.ndarray", min_weeks: int = MIN_BASELINE_WEEKS) -> float:
+    """基準期的 skill 中位數。用中位數不用平均——單一關機週的 skill 可到 7（P3 實測），
+    平均會被它拖走，中位數不會。樣本不足回 nan，上層據此回 unknown。"""
+    s = np.asarray(list(skills), dtype=float)
+    s = s[np.isfinite(s)]
+    if len(s) < min_weeks:
+        return np.nan
+    return float(np.median(s))
+
+
+def error_verdict(skill_now: float, baseline: float,
+                  warn: float = ERROR_RATIO_WARN, alert: float = ERROR_RATIO_ALERT) -> tuple[str, float]:
+    """以「當週 skill ÷ 基準中位數」判定。回 (state, ratio)。
+
+    skill 本身就是「模型 MAE ÷ seasonal-naive MAE」，所以 ratio>1.3 的白話是：
+    模型相對免費基準線的優勢，比它自己平常的水準差了三成以上。
+    """
+    if not (np.isfinite(skill_now) and np.isfinite(baseline)) or baseline <= 0:
+        return "unknown", np.nan
+    r = float(skill_now / baseline)
+    return ("alert" if r > alert else "warn" if r > warn else "stable"), r

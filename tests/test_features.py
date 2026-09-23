@@ -105,3 +105,57 @@ def test_train_valid_gap_equals_horizon():
     H = cfg["modeling"]["horizon"]
     for s in dataset.rolling_origin_splits(idx, cfg):
         assert (s.valid_start - s.train_end) >= pd.Timedelta(hours=H)
+
+
+# ---- P6：第三、四種 weather_mode ---------------------------------------------
+
+def _toy():
+    idx = pd.date_range("2016-01-01", periods=24 * 20, freq="h")
+    wx = pd.DataFrame({"airTemperature": np.sin(np.arange(len(idx)) / 24) * 8 + 20,
+                       "dewTemperature": np.sin(np.arange(len(idx)) / 24) * 5 + 12,
+                       "cloudCoverage": 3.0, "windSpeed": 2.0}, index=idx)
+    return idx, wx
+
+
+def test_noisy_forecast_error_grows_with_horizon():
+    """雜訊版預報：h24 的誤差必須大於 h1——預報誤差隨前置時間增長，反過來就是做錯了。"""
+    idx, wx = _toy()
+    cfg = {"future_weather_cols": ["airTemperature"], "forecast_noise_seed": 1,
+           "forecast_noise_sigma": {"airTemperature": [0.5, 3.0]}}
+    perfect = features.future_weather_block(wx, idx, 24, {**cfg, "weather_mode": "perfect_forecast"})
+    noisy = features.future_weather_block(wx, idx, 24, {**cfg, "weather_mode": "noisy_forecast"})
+    e1 = (noisy["fut_airTemperature_h1"] - perfect["fut_airTemperature_h1"]).abs().mean()
+    e24 = (noisy["fut_airTemperature_h24"] - perfect["fut_airTemperature_h24"]).abs().mean()
+    assert 0 < e1 < e24, (e1, e24)
+
+
+def test_noisy_forecast_is_deterministic_given_seed():
+    idx, wx = _toy()
+    cfg = {"future_weather_cols": ["airTemperature"], "weather_mode": "noisy_forecast", "forecast_noise_seed": 3}
+    a = features.future_weather_block(wx, idx, 6, cfg)
+    b = features.future_weather_block(wx, idx, 6, cfg)
+    assert a.equals(b)
+
+
+def test_forecast_frame_uses_only_forecasts_issued_at_or_before_t():
+    """真實預報的因果規則：時點 t 只能用 issued_at<=t 的最新一次發布。
+    給它一份「事後修正」（issued_at 晚於 t）的完美預報，t 這一列不得用到它。"""
+    idx = pd.date_range("2017-01-01", periods=48, freq="h")
+    t0 = idx[10]
+    rows = []
+    for h in range(1, 4):
+        tgt = t0 + pd.Timedelta(hours=h)
+        rows.append({"issued_at": t0 - pd.Timedelta(hours=6), "target_ts": tgt, "airTemperature": 10.0})  # 早發布
+        rows.append({"issued_at": t0, "target_ts": tgt, "airTemperature": 11.0})                          # 最新且合法
+        rows.append({"issued_at": t0 + pd.Timedelta(hours=1), "target_ts": tgt, "airTemperature": 99.0})  # 事後
+    fc = pd.DataFrame(rows)
+    blk = features.forecast_block_from_frame(fc, idx, 3, ["airTemperature"])
+    assert blk.loc[t0, "fut_airTemperature_h1"] == 11.0
+    assert blk.loc[t0, "fut_airTemperature_h3"] == 11.0
+    assert np.isnan(blk.loc[idx[0], "fut_airTemperature_h1"])       # 沒有預報就是 NaN，不補
+
+
+def test_unknown_weather_mode_is_rejected():
+    idx, wx = _toy()
+    with pytest.raises(ValueError):
+        features.future_weather_block(wx, idx, 3, {"weather_mode": "real"})
