@@ -1,0 +1,39 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      db:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: hvac
+          POSTGRES_PASSWORD: hvac_local_dev
+          POSTGRES_DB: hvac
+        ports: ["55432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U hvac -d hvac"
+          --health-interval 3s --health-timeout 3s --health-retries 20
+    env:
+      OMP_NUM_THREADS: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install
+        run: |
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
+          pip install -r requirements.txt
+      - name: Test (database tests must run, not skip)
+        run: |
+          python -m pytest tests/ -q -rs | tee pytest.out
+          if grep -qi "skipped" pytest.out; then
+            echo "::error::有測試被 skip——資料庫測試沒跑到就不能算通過"; exit 1
+          fi
