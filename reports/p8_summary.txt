@@ -1,0 +1,32 @@
+P8 摘要（凍結超參 {'n_estimators': 300, 'learning_rate': 0.05, 'num_leaves': 15, 'min_child_samples': 50}）
+
+逐 fold 平均（日 MAE kW／日總量 APE）：
+           day_ape                                     mae                               
+method lgbm_lagged lgbm_perfect sn_day sn_week lgbm_lagged lgbm_perfect   sn_day  sn_week
+fold                                                                                     
+3            0.061        0.056  0.091   0.083      32.959       33.189   48.176   45.443
+4            0.167        0.155  0.130   0.224      87.350       80.226   87.125  113.662
+5            0.185        0.131  0.162   0.207     141.306      111.889  113.331  127.790
+6            0.155        0.205  0.108   0.170     201.942      235.303  154.230  206.853
+7            0.105        0.118  0.130   0.249     130.036      142.161  163.750  259.313
+8            0.093        0.076  0.150   0.154     105.664       91.553  144.495  153.732
+9            0.090        0.063  0.127   0.257      70.273       56.527   94.668  147.445
+10           0.166        0.166  0.087   0.275     106.814      108.285   78.164  153.234
+11           0.137        0.146  0.137   0.280      83.045       88.597   97.417  151.803
+12           0.094        0.093  0.055   0.133      42.235       41.274   46.568   60.046
+
+主分析（事前登記：fold 為單位、配對 t、P3 判定）：
+  a=lgbm_lagged  b=sn_week  metric=mae  n=10  mean_a=100.2  mean_b=141.9  diff=-41.77  p=0.01166  folds_a_better=9/10  verdict=可宣稱
+  a=lgbm_lagged  b=sn_day  metric=mae  n=10  mean_a=100.2  mean_b=102.8  diff=-2.63  p=0.7799  folds_a_better=6/10  verdict=雜訊帶內(|差|<2SE=18.266)
+  a=sn_day  b=sn_week  metric=mae  n=10  mean_a=102.8  mean_b=141.9  diff=-39.14  p=0.00372  folds_a_better=9/10  verdict=可宣稱
+  a=lgbm_perfect  b=lgbm_lagged  metric=mae  n=10  mean_a=98.9  mean_b=100.2  diff=-1.262  p=0.819  folds_a_better=5/10  verdict=雜訊帶內(|差|<2SE=10.713)
+  a=lgbm_lagged  b=sn_week  metric=day_ape  n=10  mean_a=0.1252  mean_b=0.2031  diff=-0.07792  p=0.002036  folds_a_better=10/10  verdict=可宣稱
+  a=lgbm_lagged  b=sn_day  metric=day_ape  n=10  mean_a=0.1252  mean_b=0.1178  diff=0.007407  p=0.6061  folds_a_better=5/10  verdict=雜訊帶內(|差|<2SE=0.028)
+  a=sn_day  b=sn_week  metric=day_ape  n=10  mean_a=0.1178  mean_b=0.2031  diff=-0.08532  p=0.001853  folds_a_better=9/10  verdict=可宣稱
+  a=lgbm_perfect  b=lgbm_lagged  metric=day_ape  n=10  mean_a=0.1209  mean_b=0.1252  diff=-0.004362  p=0.6252  folds_a_better=6/10  verdict=雜訊帶內(|差|<2SE=0.017)
+
+敏感度分析（排除冰水機跳脫日）：
+  a=lgbm_lagged  b=sn_week  metric=mae  n=10  mean_a=97.79  mean_b=140.1  diff=-42.3  p=0.01108  folds_a_better=9/10  verdict=可宣稱
+  a=lgbm_lagged  b=sn_day  metric=mae  n=10  mean_a=97.79  mean_b=100.1  diff=-2.331  p=0.805  folds_a_better=6/10  verdict=雜訊帶內(|差|<2SE=18.328)
+
+輔助描述（逐日勝率，不拿來宣稱）：lgbm_lagged 勝 sn_week 75%、勝 sn_day 63%，計分日 279
