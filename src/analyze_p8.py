@@ -107,7 +107,7 @@ def main():
     tab, by_month = g14_view(pred)
     h, m = G14_THRESHOLDS["hourly"], G14_THRESHOLDS["monthly"]
     lines += ["", "## 五、以 M&V 指標重看（事後；NMBE 正＝模型低估）",
-              f"參考門檻（基準模型用，未一手核對）：每小時 CV≤{h[0]:.0%} |NMBE|≤{h[1]:.0%}；每月 CV≤{m[0]:.0%} |NMBE|≤{m[1]:.0%}",
+              f"參考門檻（基準模型用，Guideline 14-2002 §5.3.2.4(f)）：每小時 CV≤{h[0]:.0%} |NMBE|≤{h[1]:.0%}；每月 CV≤{m[0]:.0%} |NMBE|≤{m[1]:.0%}",
               tab.assign(cv_rmse=lambda x: (x.cv_rmse * 100).round(1), nmbe=lambda x: (x.nmbe * 100).round(1))
                  .to_string(index=False),
               "", "逐月偏差（Σ(y−ŷ)/Σy，%）：", (by_month * 100).round(1).to_string(),
