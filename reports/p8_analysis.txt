@@ -69,3 +69,45 @@
 WC000_return_c          1.0000          0.9999          0.9805
 WC001_return_c          0.9999          1.0000          0.9805
 WC003_return_c          0.9805          0.9805          1.0000
+
+## 五、以 M&V 指標重看（事後；NMBE 正＝模型低估）
+參考門檻（基準模型用，未一手核對）：每小時 CV≤30% |NMBE|≤10%；每月 CV≤15% |NMBE|≤5%
+granularity       method    n  cv_rmse  nmbe
+     hourly       sn_day 6963     28.1   0.7
+     hourly      sn_week 6963     35.5   0.3
+     hourly  lgbm_lagged 6963     26.2   5.8
+     hourly lgbm_perfect 6963     25.7   5.5
+      daily       sn_day  300     20.2   1.3
+      daily      sn_week  300     30.3   0.5
+      daily  lgbm_lagged  300     19.3   6.0
+      daily lgbm_perfect  300     19.7   5.7
+    monthly       sn_day   10      2.0   0.8
+    monthly      sn_week   10     12.4   0.5
+    monthly  lgbm_lagged   10     12.2   6.5
+    monthly lgbm_perfect   10     14.8   6.1
+
+逐月偏差（Σ(y−ŷ)/Σy，%）：
+      sn_day  sn_week  lgbm_lagged  lgbm_perfect
+fold                                            
+3       -0.7      0.3         -0.1          -1.3
+4        2.4      6.7         16.7          15.4
+5        2.9     16.1         20.0          13.0
+6        1.2     11.1         14.9          21.1
+7       -0.6     -8.6         -4.9          -8.4
+8        2.5      2.9          2.9          -1.0
+9       -2.3    -18.9         -2.1           0.4
+10       2.4     12.0         15.4          16.6
+11      -0.1    -11.5          2.1           3.6
+12      -0.7     -7.0         -4.2          -4.8
+
+測試期負荷高於訓練 99 百分位的比例：
+3     0.001
+4     0.088
+5     0.107
+6     0.511
+7     0.103
+8     0.000
+9     0.000
+10    0.002
+11    0.000
+12    0.000

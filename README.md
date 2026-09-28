@@ -46,7 +46,7 @@ P8 另用 [Bosch Budapest 冰水機房 BMS](https://zenodo.org/records/12590466)
 - [x] **P5 服務層與 API contract** — FastAPI＋SQLAlchemy＋PostgreSQL、多廠牌方言歸一（[報告](reports/P5_REPORT.md)）
 - [x] **P6 誤差監控與氣象預報契約** — 主訊號改誤差、PSI 降級、重訓未改善不晉升；`forecast`／`noisy_forecast` 兩種新天氣模式（[路線圖](docs/ROADMAP_P6.md)）
 - [x] **P7 實際值回填與 SQL 週 skill** — 端到端回放 6 棟真實建築；多年同期基準誤報 16% vs 滾動 23%；冰機關機近似規則（[報告](reports/P7_REPORT.md)）
-- [x] **P8 機房側日前 96 步預測** — Bosch 冰水機房 2024 全年、15 分鐘；三方投票找出漂移冷量點位；LightGBM 勝上週基準、與昨天基準在雜訊帶內（[報告](reports/P8_REPORT.md)）
+- [x] **P8 機房側日前 96 步預測** — Bosch 冰水機房 2024 全年、15 分鐘；三方投票找出漂移冷量點位；LightGBM 勝上週基準、與昨天基準在雜訊帶內；M&V 指標 NMBE 另抓到 LightGBM 系統性低估約 6%（[報告](reports/P8_REPORT.md)）
 
 ### 還沒做的（依優先序）
 
@@ -89,7 +89,7 @@ src/fetch_data.sh                      # 取資料（走 Git LFS API，附 SHA25
 docker compose up -d                        # 以下需要 PostgreSQL（OrbStack／Docker）
 .venv/bin/uvicorn --app-dir src service:app # P5：模型服務
 .venv/bin/python src/replay_p7.py           # P7：端到端回放（約 25 分鐘，會重建資料表）
-.venv/bin/python -m pytest tests/ -q        # 88 則（25 則需 PostgreSQL，未啟動則 skip）
+.venv/bin/python -m pytest tests/ -q        # 93 則（25 則需 PostgreSQL，未啟動則 skip）
 ```
 
 > 取資料為什麼不是 `curl raw.githubusercontent.com`：該 repo 用 Git LFS，直接抓只會得到
