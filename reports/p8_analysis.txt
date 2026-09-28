@@ -71,7 +71,7 @@ WC001_return_c          0.9999          1.0000          0.9805
 WC003_return_c          0.9805          0.9805          1.0000
 
 ## 五、以 M&V 指標重看（事後；NMBE 正＝模型低估）
-參考門檻（基準模型用，未一手核對）：每小時 CV≤30% |NMBE|≤10%；每月 CV≤15% |NMBE|≤5%
+參考門檻（基準模型用，Guideline 14-2002 §5.3.2.4(f)）：每小時 CV≤30% |NMBE|≤10%；每月 CV≤15% |NMBE|≤5%
 granularity       method    n  cv_rmse  nmbe
      hourly       sn_day 6963     28.1   0.7
      hourly      sn_week 6963     35.5   0.3
