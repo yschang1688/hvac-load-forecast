@@ -12,7 +12,8 @@ import pandas as pd
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 from bosch_plant import TZ, DAILY_METER, load_point, daily_meter_totals, physics_load_kw  # noqa: E402
-from run_p8 import paired_folds  # noqa: E402
+from run_p8 import paired_folds, load_inputs, build_rows, folds  # noqa: E402
+from mv_metrics import g14_table, G14_THRESHOLDS  # noqa: E402
 
 RATIO_ALERT = 1.3   # 沿用 P6 誤差監控的門檻：模型 MAE ÷ 基準 MAE 超過 1.3 倍即告警
 
@@ -75,6 +76,24 @@ def twin_correlation(tw: pd.DataFrame) -> pd.DataFrame:
     return c.corr().round(4)
 
 
+def g14_view(pred: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """事後：用 M&V 的 CV(RMSE)／NMBE 重看同一批預測，並逐月看偏差方向（NMBE 正＝低估）。"""
+    d = pred.set_index(pd.DatetimeIndex(pred.target_ts).tz_convert(TZ))
+    methods = ["sn_day", "sn_week", "lgbm_lagged", "lgbm_perfect"]
+    tab = g14_table(d, "y", methods)
+    by_month = d.dropna(subset=["y"] + methods).groupby("fold").apply(
+        lambda g: pd.Series({m: (g.y - g[m]).sum() / g.y.sum() for m in methods}))
+    return tab, by_month
+
+
+def extrapolation_share() -> pd.Series:
+    """各 fold 測試期實際負荷高於「訓練資料 99 百分位」的比例：樹模型的預測值超不過訓練時見過的範圍。"""
+    y, t, _ = load_inputs()
+    rows = build_rows(y, t)
+    return pd.Series({m: float((te.y > tr.y.quantile(0.99)).mean()) for m, tr, te in folds(rows)},
+                     name="test_share_above_train_p99")
+
+
 def main():
     tw = pd.read_parquet(ROOT / "data/processed/bosch_twins_15min.parquet")
     daily = pd.read_csv(ROOT / "reports/p8_daily.csv")
@@ -84,6 +103,15 @@ def main():
     lines += ["", "## 二、10 月跳脫後工況切換（事後）", txt, tab.to_string()]
     lines += ["", "## 三、完美預報 vs 滯後，只看 8–12 月（事後切片）", weather_after_summer(daily)]
     lines += ["", "## 四、官方目標的共線分身（同時刻相關）", twin_correlation(tw).to_string()]
+    pred = pd.read_parquet(ROOT / "data/processed/p8_predictions.parquet")
+    tab, by_month = g14_view(pred)
+    h, m = G14_THRESHOLDS["hourly"], G14_THRESHOLDS["monthly"]
+    lines += ["", "## 五、以 M&V 指標重看（事後；NMBE 正＝模型低估）",
+              f"參考門檻（基準模型用，未一手核對）：每小時 CV≤{h[0]:.0%} |NMBE|≤{h[1]:.0%}；每月 CV≤{m[0]:.0%} |NMBE|≤{m[1]:.0%}",
+              tab.assign(cv_rmse=lambda x: (x.cv_rmse * 100).round(1), nmbe=lambda x: (x.nmbe * 100).round(1))
+                 .to_string(index=False),
+              "", "逐月偏差（Σ(y−ŷ)/Σy，%）：", (by_month * 100).round(1).to_string(),
+              "", "測試期負荷高於訓練 99 百分位的比例：", extrapolation_share().round(3).to_string()]
     out = "\n".join(lines)
     (ROOT / "reports/p8_analysis.txt").write_text(out + "\n")
     print(out)

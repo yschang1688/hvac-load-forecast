@@ -162,7 +162,7 @@ def main():
             best, best_mae = p, mae
     print("凍結超參：", best)
 
-    daily, byh = [], []
+    daily, byh, preds_all = [], [], []
     for m, tr, te in folds(rows):
         preds = {
             "sn_day": te.y_same_yday.to_numpy(),
@@ -178,10 +178,18 @@ def main():
             hh[k] = np.abs(v - te.y.to_numpy())
         hh["fold"] = m
         byh.append(hh)
+        pp = te[["target_ts", "y"]].copy()
+        for k, v in preds.items():
+            pp[k] = v
+        pp["fold"] = m
+        preds_all.append(pp)
         print(f"fold {m:2d}: train {len(tr):>6,} rows  test days {d.local_date.nunique():>2}  "
               + "  ".join(f"{k}={d[d.method == k].mae.mean():.1f}" for k in preds))
     daily = pd.concat(daily, ignore_index=True)
     daily.to_csv(ROOT / "reports/p8_daily.csv", index=False)
+    # 逐格預測（gitignored）：analyze_p8 用它算 M&V 指標
+    (ROOT / "data/processed").mkdir(parents=True, exist_ok=True)
+    pd.concat(preds_all, ignore_index=True).to_parquet(ROOT / "data/processed/p8_predictions.parquet")
     byh = pd.concat(byh, ignore_index=True)
     (byh.assign(hour_ahead=((byh.h - 1) // 4) + 1)
         .groupby("hour_ahead")[["sn_day", "sn_week", "lgbm_lagged", "lgbm_perfect"]].mean()
