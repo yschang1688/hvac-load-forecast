@@ -21,6 +21,7 @@
 | 多廠牌欄位方言怎麼歸一，schema 違規怎麼擋 | [P5 報告](reports/P5_REPORT.md) · [`src/contracts.py`](src/contracts.py) |
 | 預測怎麼跟實際值對帳、每週 skill 怎麼用 SQL 算、基準為何用往年同期 | [P7 報告](reports/P7_REPORT.md) · [`src/db.py`](src/db.py) |
 | 換到機房側 15 分鐘資料：三方投票抓漂移點位、基準線選錯會宣稱出假進步 | [P8 報告](reports/P8_REPORT.md) · [`src/bosch_plant.py`](src/bosch_plant.py) |
+| 節能量怎麼算、兩個會吃掉節能的錯誤、最危險的模型為何在安慰劑測試裡看起來最好 | [P9 報告](reports/P9_REPORT.md) · [`src/mv_baseline.py`](src/mv_baseline.py) |
 | 非顯而易見的設計決定與踩過的坑 | [設計筆記](docs/DESIGN_NOTES.md) |
 | 商用系統的輸入與功能，對照本專案做了什麼、沒做什麼 | [領域參考](docs/DOMAIN_REFERENCE.md) |
 | 誤差監控取代 PSI、氣象預報怎麼接進來 | [P6 路線圖](docs/ROADMAP_P6.md) · [氣象預報 MCP 契約](docs/WEATHER_MCP_CONTRACT.md) |
@@ -47,6 +48,7 @@ P8 另用 [Bosch Budapest 冰水機房 BMS](https://zenodo.org/records/12590466)
 - [x] **P6 誤差監控與氣象預報契約** — 主訊號改誤差、PSI 降級、重訓未改善不晉升；`forecast`／`noisy_forecast` 兩種新天氣模式（[路線圖](docs/ROADMAP_P6.md)）
 - [x] **P7 實際值回填與 SQL 週 skill** — 端到端回放 6 棟真實建築；多年同期基準誤報 16% vs 滾動 23%；冰機關機近似規則（[報告](reports/P7_REPORT.md)）
 - [x] **P8 機房側日前 96 步預測** — Bosch 冰水機房 2024 全年、15 分鐘；三方投票找出漂移冷量點位；LightGBM 勝上週基準、與昨天基準在雜訊帶內；M&V 指標 NMBE 另抓到 LightGBM 系統性低估約 6%（[報告](reports/P8_REPORT.md)）
+- [x] **P9 節能基準模型** — 安慰劑測試合計 −0.3% 但逐月 ±45%；植入 15% 真節能，滯後能耗特徵只算出 2.2%、滾動重訓逐月吸收；一條行為守門同時抓到兩者（[報告](reports/P9_REPORT.md)）
 
 ### 還沒做的（依優先序）
 
@@ -85,11 +87,12 @@ src/fetch_data.sh                      # 取資料（走 Git LFS API，附 SHA25
 .venv/bin/python src/analyze_p3_shutdown.py # P7：關機規則重新聚合 P3（不重訓）
 .venv/bin/python src/bosch_plant.py          # P8：Bosch 變動觸發序列 → 15 分鐘格點（資料取得見 docs/P8_PLAN.md）
 .venv/bin/python src/run_p8.py              # P8：日前 96 步，10 個月份 fold（約 8 秒）
+.venv/bin/python src/run_p9.py              # P9：節能基準模型、安慰劑與植入節能（約 5 秒）
 
 docker compose up -d                        # 以下需要 PostgreSQL（OrbStack／Docker）
 .venv/bin/uvicorn --app-dir src service:app # P5：模型服務
 .venv/bin/python src/replay_p7.py           # P7：端到端回放（約 25 分鐘，會重建資料表）
-.venv/bin/python -m pytest tests/ -q        # 93 則（25 則需 PostgreSQL，未啟動則 skip）
+.venv/bin/python -m pytest tests/ -q        # 101 則（25 則需 PostgreSQL，未啟動則 skip）
 ```
 
 > 取資料為什麼不是 `curl raw.githubusercontent.com`：該 repo 用 Git LFS，直接抓只會得到
