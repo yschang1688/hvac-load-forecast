@@ -24,6 +24,7 @@
 | 節能量怎麼算、兩個會吃掉節能的錯誤、最危險的模型為何在安慰劑測試裡看起來最好 | [P9 報告](reports/P9_REPORT.md) · [`src/mv_baseline.py`](src/mv_baseline.py) |
 | 跨年基準：報告期出現來源不明的工況變更、基準期裡的非例行事件讓答案「對但理由錯」 | [P10 報告](reports/P10_REPORT.md) |
 | 換成官方 CalTRACK 實作（OpenEEmeter）：校準過了 Guideline 14，報告期差異反而多 16 個百分點 | [P10 第二段報告](reports/P10B_REPORT.md) · [`src/run_p10b.py`](src/run_p10b.py) |
+| 把預測接到設定點決策：滾動視窗最佳化、不依賴最佳化器的安全層、降級；機房模型是假設的 | [P11 報告](reports/P11_REPORT.md) · [`src/mpc.py`](src/mpc.py) |
 | 非顯而易見的設計決定與踩過的坑 | [設計筆記](docs/DESIGN_NOTES.md) |
 | 商用系統的輸入與功能，對照本專案做了什麼、沒做什麼 | [領域參考](docs/DOMAIN_REFERENCE.md) |
 | 誤差監控取代 PSI、氣象預報怎麼接進來 | [P6 路線圖](docs/ROADMAP_P6.md) · [氣象預報 MCP 契約](docs/WEATHER_MCP_CONTRACT.md) |
@@ -54,6 +55,7 @@ P10 另用同一資料的 [Kaggle 競賽版](https://www.kaggle.com/competitions
 - [x] **P9 節能基準模型** — 安慰劑測試合計 −0.3% 但逐月 ±45%；植入 15% 真節能，滯後能耗特徵只算出 2.2%、滾動重訓逐月吸收；一條行為守門同時抓到兩者（[報告](reports/P9_REPORT.md)）
 - [x] **P10 跨年節能基準（第一段）** — 2024 全年基準對 2025 年 1–5 月；報告期有來源不明的供水溫工況變更；全年基準合計 −2.7% 最準，但拿掉基準期內的非例行事件就變 −10.1%（[報告](reports/P10_REPORT.md)）
 - [x] **P10 第二段：OpenEEmeter 對照** — 官方 CalTRACK 小時模型基準期月度 CV 10%（過 Guideline 14），報告期合計 −19.1%，簡化版 −3.3%；五個月都超出模型自己的 90% 不確定度；三個月加權分段等於同季基準（[報告](reports/P10B_REPORT.md)）
+- [x] **P11 控制層骨架** — 實測負載與氣象 × 假設的機房模型；8 組回放套用後設定點超出硬限制 0 步；完美預測只比延續當下值省 0.05%，但安全層介入從 47 步降到 0；模擬的省電百分比是假設參數的產物，不可引用（[報告](reports/P11_REPORT.md)）
 
 ### 還沒做的（依優先序）
 
@@ -95,6 +97,7 @@ src/fetch_data.sh                      # 取資料（走 Git LFS API，附 SHA25
 .venv/bin/python src/run_p9.py              # P9：節能基準模型、安慰劑與植入節能（約 5 秒）
 .venv/bin/python src/run_p10.py             # P10：跨年基準（需 Kaggle 競賽版 2025 資料，見報告）
 .venv/bin/python src/run_p10b.py            # P10 第二段：OpenEEmeter 對照（另需 uv pip install eemeter，約 25 秒）
+.venv/bin/python src/run_p11.py             # P11：控制層回放（假設的機房模型，約 85 秒）
 
 docker compose up -d                        # 以下需要 PostgreSQL（OrbStack／Docker）
 .venv/bin/uvicorn --app-dir src service:app # P5：模型服務
