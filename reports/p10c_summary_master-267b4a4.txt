@@ -1,0 +1,70 @@
+P10 第三段摘要：OpenDSM 1.2.7［master-267b4a4］（Python 3.14.6、pandas 3.0.6）重跑節能基準
+  輸入、報告期、負值處理、°F 換算同第二段；新模型 HourlyNonSolarSettings，主比較 seed=42
+
+## 一、N1 OpenDSM HourlyCaltrackModel 對第二段 M1（eemeter 4.1.1）逐月對帳
+  2025-01：N1 -13.47%　M1 -13.47%　差 -0.000 個百分點
+  2025-02：N1 -17.28%　M1 -17.28%　差 -0.000 個百分點
+  2025-03：N1 -41.97%　M1 -41.97%　差 -0.000 個百分點
+  2025-04：N1 -17.87%　M1 -17.87%　差 -0.000 個百分點
+  2025-05：N1 -11.35%　M1 -11.35%　差 +0.000 個百分點
+  total：N1 -19.12%　M1 -19.12%　差 +0.000 個百分點
+  最大差 0.000 個百分點
+
+## 二、充足性警告與不合格原因（原樣輸出）
+  N1 CalTRACK 01-01 起
+    資料警告：extreme_values_detected {'n_extreme_values': 129, 'median': np.float64(387.5948088445642), 'upper_quantile': np.float64(687.6439912632352), 'lower_quantile': np.float64(293.65647776824244), 'extreme_value_limit': np.float64(1569.5573493295424), 'max_value': 3616.906147729561}
+    不合格：無
+  N2 HourlyModel 01-01 起
+    資料警告：extreme_values_detected {'n_extreme_values': 48, 'median': 388.9, 'upper_quantile': 687.7, 'lower_quantile': 293.9, 'lower_bound': -887.5, 'upper_bound': 1869.0, 'min_value': 0.0, 'max_value': 3617.0}
+    不合格：無
+    模型警告：extreme_values_detected {'n_extreme_values': 48, 'median': 388.9, 'upper_quantile': 687.7, 'lower_quantile': 293.9, 'lower_bound': -887.5, 'upper_bound': 1869.0, 'min_value': 0.0, 'max_value': 3617.0}
+  N3 HourlyModel 01-08 起
+    資料警告：extreme_values_detected {'n_extreme_values': 42, 'median': 395.4, 'upper_quantile': 694.5, 'lower_quantile': 295.8, 'lower_bound': -900.1, 'upper_bound': 1890.0, 'min_value': 0.0, 'max_value': 3617.0}
+    不合格：無
+    模型警告：extreme_values_detected {'n_extreme_values': 42, 'median': 395.4, 'upper_quantile': 694.5, 'lower_quantile': 295.8, 'lower_bound': -900.1, 'upper_bound': 1890.0, 'min_value': 0.0, 'max_value': 3617.0}
+
+## 三、基準期擬合（樣本內；NMBE 正＝低估；Guideline 14-2002：每小時 30%／±10%、每月 15%／±5%）
+  N1 CalTRACK：每小時 CV 26.9% NMBE +0.2%｜每月 CV 10.0% NMBE +0.2%
+  N2 HourlyModel：每小時 CV 31.9% NMBE -0.0%｜每月 CV 9.9% NMBE -0.0%
+  M2 簡化版：每小時 CV 36.9% NMBE +0.0%｜每月 CV 21.8% NMBE +0.0%
+
+## 四、跨年未解釋差異（調整後基準 − 實際；負值＝實際比基準多）
+  N1 CalTRACK 全年      ：01月 -13.5%　02月 -17.3%　03月 -42.0%　04月 -17.9%　05月 -11.4%｜合計 -19.1%
+                        高供水溫工況 01-01～05-10：3,001 小時，-19.0%
+                        回到 2024 工況 05-11～05-31：462 小時，-20.0%
+  N2 HourlyModel 全年   ：01月 -15.3%　02月 -23.8%　03月 -25.4%　04月 -12.5%　05月 +7.6%｜合計 -12.0%
+                        高供水溫工況 01-01～05-10：3,076 小時，-15.3%
+                        回到 2024 工況 05-11～05-31：462 小時，+3.9%
+  M2 簡化版 全年           ：01月 -7.2%　02月 -15.3%　03月 -13.6%　04月 +5.6%　05月 +6.5%｜合計 -3.3%
+                        高供水溫工況 01-01～05-10：3,001 小時，-4.7%
+                        回到 2024 工況 05-11～05-31：462 小時，+3.6%
+  N3 HourlyModel 01-08 起：01月 -14.5%　02月 -22.8%　03月 -24.7%　04月 -12.2%　05月 +7.6%｜合計 -11.6%
+                        高供水溫工況 01-01～05-10：3,076 小時，-14.7%
+                        回到 2024 工況 05-11～05-31：462 小時，+3.9%
+  N4 HourlyModel 去事件  ：01月 -18.6%　02月 -26.5%　03月 -28.9%　04月 -15.2%　05月 +6.5%｜合計 -14.5%
+                        高供水溫工況 01-01～05-10：3,076 小時，-17.7%
+                        回到 2024 工況 05-11～05-31：462 小時，+1.5%
+  N4 fit 被擋下：DataSufficiencyError: Can't fit model on disqualified baseline data；不合格原因：missing_monthly_observed_data {'lowest_monthly_coverage': 0.4832}（去掉事件後 10、11 月覆蓋率不足，N4 是帶 ignore_disqualification 跑出來的）
+  N2 − N1 合計 +7.1 個百分點；N2 − M2 合計 -8.7 個百分點；N4 − N2 合計 -2.5 個百分點
+
+## 四之二（事後）、同小時集合上的合計
+  N1 有預測 3,463 小時；N2 有預測 3,538 小時；共同 3,463 小時
+  N1 CalTRACK 全年      ：-19.1%
+  N2 HourlyModel 全年   ：-12.5%
+  M2 簡化版 全年           ：-3.3%
+  N4 HourlyModel 去事件  ：-15.0%
+
+## 五、N5 種子敏感度（HourlyModel，全年基準，合計）
+  seed 0：-12.03%　seed 1：-12.03%　seed 2：-12.03%　seed 3：-12.03%　seed 4：-12.03%
+  範圍 0.00 個百分點（另 seed 42：-12.03%）
+
+## 六、N2 逐月差異 vs 模型自己的 90% 不確定度（MWh）
+  2025-01：差異   -36.8 MWh，不確定度 ± 12.5 MWh，超出
+  2025-02：差異   -51.5 MWh，不確定度 ± 11.9 MWh，超出
+  2025-03：差異   -58.0 MWh，不確定度 ± 12.5 MWh，超出
+  2025-04：差異   -34.3 MWh，不確定度 ± 12.3 MWh，超出
+  2025-05：差異   +25.2 MWh，不確定度 ± 12.5 MWh，超出
+
+## 七、守門與植入 15%（N2）
+  守門（報告期能耗是否流進基準）：False
+  不植入 -12.0%；植入後 +4.8%；不吸收時應得 +4.8%；被吃掉 +0.00%

@@ -1,4 +1,4 @@
-P10 第三段摘要：OpenDSM 1.2.7（Python 3.13.9）重跑節能基準
+P10 第三段摘要：OpenDSM 1.2.7（Python 3.13.9、pandas 2.3.3）重跑節能基準
   輸入、報告期、負值處理、°F 換算同第二段；新模型 HourlyNonSolarSettings，主比較 seed=42
 
 ## 一、N1 OpenDSM HourlyCaltrackModel 對第二段 M1（eemeter 4.1.1）逐月對帳

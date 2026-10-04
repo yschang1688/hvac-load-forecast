@@ -4,5 +4,11 @@
 opendsm==1.2.7
 # multimethod 2.1（2026-07-29）與 scikit-fda 0.10.1 衝突：import opendsm 時報 metaclass conflict。
 # Python 3.13 與 3.14 都會發生，所以根因是這個版本組合，不是 Python 版本。
+# 上游：https://github.com/GAA-UAM/scikit-fda/issues/710（已確認是 multimethod 2.1 的問題）
+#       https://github.com/coady/multimethod/pull/153（修正，2026-10-04 時尚未合併）
+#       https://github.com/GAA-UAM/scikit-fda/issues/723（scikit-fda 已發布版本仍未排除 2.1）
+# 另一條路：OpenDSM 開發版已移除 scikit-fda 依賴，Python 3.14 可直接用，不需要釘版：
+#   uv pip install "opendsm @ git+https://github.com/opendsm/opendsm@267b4a4" lightgbm
+# 但它沒有發布版號，逐月數字與 1.2.7 差 1–2 個百分點（reports/P10C_REPORT.md §五），所以主結果維持 1.2.7。
 multimethod==2.0.2
 lightgbm
