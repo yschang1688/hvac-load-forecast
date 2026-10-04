@@ -11,6 +11,7 @@
 輸出：reports/p10c_monthly.csv、reports/p10c_summary.txt
 """
 from __future__ import annotations
+import os
 import sys
 import warnings
 from pathlib import Path
@@ -26,6 +27,9 @@ import run_p10b as b  # noqa: E402  （資料、報表函式沿用第二段；�
 T, EVENT, TRAP_S = b.T, b.EVENT, b.TRAP_S
 REPORT_START = b.REPORT_START
 SEED = 42
+# 輸出檔尾碼。主結果（PyPI 1.2.7）不設；對照其他版本時設 P10C_TAG，例如 master-267b4a4，才不會蓋掉主結果。
+TAG = os.environ.get("P10C_TAG", "")
+SUFFIX = f"_{TAG}" if TAG else ""
 SEEDS = [0, 1, 2, 3, 4]
 
 
@@ -117,7 +121,8 @@ def main():
     base_full = b.clean(b.frame_2024_full())
     rep = b.clean(p10.frame_2025())
     h = pd.concat([base_full, rep])
-    lines = [f"P10 第三段摘要：OpenDSM {ee.__version__}（Python {sys.version.split()[0]}）重跑節能基準",
+    lines = [f"P10 第三段摘要：OpenDSM {ee.__version__}{'［' + TAG + '］' if TAG else ''}"
+             f"（Python {sys.version.split()[0]}、pandas {pd.__version__}）重跑節能基準",
              "  輸入、報告期、負值處理、°F 換算同第二段；新模型 HourlyNonSolarSettings，主比較 seed=42"]
 
     # ---- 一、N1 對帳
@@ -244,9 +249,9 @@ def main():
     expect = 1 - (1 - TRAP_S) * (1 - f0)
     lines.append(f"  不植入 {f0:+.1%}；植入後 {f1:+.1%}；不吸收時應得 {expect:+.1%}；被吃掉 {expect - f1:+.2%}")
 
-    pd.DataFrame(rows).to_csv(ROOT / "reports/p10c_monthly.csv", index=False)
+    pd.DataFrame(rows).to_csv(ROOT / f"reports/p10c_monthly{SUFFIX}.csv", index=False)
     txt = "\n".join(lines)
-    (ROOT / "reports/p10c_summary.txt").write_text(txt + "\n")
+    (ROOT / f"reports/p10c_summary{SUFFIX}.txt").write_text(txt + "\n")
     print(txt)
 
 
