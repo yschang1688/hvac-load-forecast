@@ -1,0 +1,40 @@
+P12 摘要：調校簡化版節能基準（候選與選擇只用 2024 基準期；整週交錯四折）
+  基準期 2024-01-01～2024-12-31，8,591 小時；四折各 [2175, 2098, 2163, 2155] 小時
+
+## 一、C0 樣本內（應重現第二段 M2：每小時 36.9%、每月 21.8%）
+  每小時 CV 36.9% NMBE +0.0%｜每月 CV 21.8% NMBE +0.0%
+
+## 二、12 個候選的樣本外表現（主指標：每小時 CV(RMSE)）
+  none/shared/ridge=0.001    每小時 CV 37.9% NMBE +0.03%｜每月 CV 22.2% NMBE +0.03%
+  none/shared/ridge=1        每小時 CV 37.9% NMBE +0.03%｜每月 CV 22.2% NMBE +0.03%
+  none/shared/ridge=10       每小時 CV 38.1% NMBE +0.04%｜每月 CV 22.2% NMBE +0.05%
+  none/occ/ridge=0.001       每小時 CV 36.8% NMBE +0.18%｜每月 CV 22.6% NMBE +0.20%
+  none/occ/ridge=1           每小時 CV 36.8% NMBE +0.18%｜每月 CV 22.6% NMBE +0.20%
+  none/occ/ridge=10          每小時 CV 36.9% NMBE +0.20%｜每月 CV 22.6% NMBE +0.22%
+  m3/shared/ridge=0.001      每小時 CV 30.9% NMBE -0.01%｜每月 CV 9.9% NMBE -0.01%
+  m3/shared/ridge=1          每小時 CV 30.7% NMBE -0.04%｜每月 CV 9.9% NMBE -0.05%
+  m3/shared/ridge=10         每小時 CV 32.8% NMBE -0.08%｜每月 CV 9.8% NMBE -0.08%
+  m3/occ/ridge=0.001         每小時 CV 31.0% NMBE +0.03%｜每月 CV 10.1% NMBE +0.03%
+  m3/occ/ridge=1             每小時 CV 30.7% NMBE +0.01%｜每月 CV 10.2% NMBE +0.01%
+  m3/occ/ridge=10            每小時 CV 31.2% NMBE +0.07%｜每月 CV 10.3% NMBE +0.08%
+  主指標最低：m3/occ/ridge=1（30.7%）；依 1.0 個百分點規則選定：**m3/shared/ridge=1**（30.7%）
+  C0 37.9% → 選定 30.7%，差 -7.2 個百分點
+
+## 三、對照組：OpenDSM 在同一個四折協定下（不參與選擇）
+  OpenDSM CalTRACK           每小時 CV 31.1% NMBE +0.24%｜每月 CV 10.6% NMBE +0.26%（8,591 小時）
+                             紀錄：extreme_values_detected；too_many_days_with_missing_data；too_many_days_with_missing_meter_data；too_many_days_with_missing_temperature_data
+  OpenDSM HourlyModel        每小時 CV 37.0% NMBE +0.24%｜每月 CV 13.8% NMBE +0.26%（8,591 小時）
+                             紀錄：fit 被擋下：DataSufficiencyError: Can't fit model on disqualified baseline data；missing_monthly_observed_data；missing_monthly_temperature_data；too_many_days_with_missing_joint_data；too_many_days_with_missing_observed_data；too_many_days_with_missing_temperature_data
+
+## 四、選定模型與 C0 的安慰劑（留出週沒有任何改善，正確答案 0）與植入 15%
+  C0（none/shared/ridge=0.001）安慰劑：合計 -0.03%；逐月 -32.8%～+27.1%；逐月絕對值中位數 18.2%
+      植入 15%：合計算回 +15.0%；逐月 -12.9%～+38.0%
+  選定（m3/shared/ridge=1）安慰劑：合計 +0.04%；逐月 -12.9%～+12.4%；逐月絕對值中位數 4.4%
+      植入 15%：合計算回 +15.0%；逐月 +4.0%～+25.5%
+  守門（報告期能耗是否流進基準）：C0 False；選定 False
+
+## 五、2025 報告期未解釋差異（已看過的資料，僅描述，不是選擇依據）
+  C0  none/shared/ridge=0.001   ：01月 -7.2%　02月 -15.3%　03月 -13.6%　04月 +5.6%　05月 +6.5%｜合計 -3.3%
+  選定  m3/shared/ridge=1         ：01月 -13.9%　02月 -17.8%　03月 -42.3%　04月 -21.9%　05月 -11.5%｜合計 -20.3%
+  參照 N1 CalTRACK 全年（P10 第三段）：合計 -19.1%
+  參照 N2 HourlyModel 全年（P10 第三段）：合計 -12.1%
