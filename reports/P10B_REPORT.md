@@ -2,6 +2,7 @@
 
 P9、P10 的基準是自己寫的簡化版「時段 × 溫度」迴歸。這一段換成官方實作 OpenEEmeter 4.1.1 的 `HourlyCaltrackModel`，用同一份資料、同一個報告期再算一次。
 設計在任何 eemeter 結果出來之前寫進 [`docs/P10B_PLAN.md`](../docs/P10B_PLAN.md)（commit db2d128）。
+> 後續：`eemeter` 已改名 OpenDSM。用 opendsm 1.2.7 重跑的結果見 [P10 第三段](P10C_REPORT.md)：本頁的 CalTRACK 數字完全重現，另多一個新小時模型的對照。
 
 ```bash
 uv pip install --python .venv/bin/python eemeter   # 4.1.1；只新增套件，不動既有版本
