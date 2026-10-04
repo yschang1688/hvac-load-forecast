@@ -1,0 +1,8 @@
+# P10 第三段專用環境（Python 3.13）。共用 .venv 是 Python 3.14，opendsm 1.2.7 在那裡 import 失敗。
+#   uv venv .venv-opendsm --python 3.13
+#   uv pip install --python .venv-opendsm/bin/python -r requirements-opendsm.txt
+opendsm==1.2.7
+# multimethod 2.1（2026-07-29）與 scikit-fda 0.10.1 衝突：import opendsm 時報 metaclass conflict。
+# Python 3.13 與 3.14 都會發生，所以根因是這個版本組合，不是 Python 版本。
+multimethod==2.0.2
+lightgbm
