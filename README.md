@@ -25,6 +25,7 @@
 | 跨年基準：報告期出現來源不明的工況變更、基準期裡的非例行事件讓答案「對但理由錯」 | [P10 報告](reports/P10_REPORT.md) |
 | 換成官方 CalTRACK 實作（OpenEEmeter）：校準過了 Guideline 14，報告期差異反而多 16 個百分點 | [P10 第二段報告](reports/P10B_REPORT.md) · [`src/run_p10b.py`](src/run_p10b.py) |
 | 套件改名 OpenDSM 後重跑：CalTRACK 數字不變，但同套件的新小時模型差 7 個百分點 | [P10 第三段報告](reports/P10C_REPORT.md) · [`src/run_p10c.py`](src/run_p10c.py) |
+| 只用基準期資料調校線性迴歸：加月份分段後校準過關，但 2025 年的答案變成和 CalTRACK 一樣 | [P12 報告](reports/P12_REPORT.md) · [`src/mv_tuning.py`](src/mv_tuning.py) |
 | 把預測接到設定點決策：滾動視窗最佳化、不依賴最佳化器的安全層、降級；機房模型是假設的 | [P11 報告](reports/P11_REPORT.md) · [`src/mpc.py`](src/mpc.py) |
 | 非顯而易見的設計決定與踩過的坑 | [設計筆記](docs/DESIGN_NOTES.md) |
 | 商用系統的輸入與功能，對照本專案做了什麼、沒做什麼 | [領域參考](docs/DOMAIN_REFERENCE.md) |
@@ -57,6 +58,7 @@ P10 另用同一資料的 [Kaggle 競賽版](https://www.kaggle.com/competitions
 - [x] **P10 跨年節能基準（第一段）** — 2024 全年基準對 2025 年 1–5 月；報告期有來源不明的供水溫工況變更；全年基準合計 −2.7% 最準，但拿掉基準期內的非例行事件就變 −10.1%（[報告](reports/P10_REPORT.md)）
 - [x] **P10 第二段：OpenEEmeter 對照** — 官方 CalTRACK 小時模型基準期月度 CV 10%（過 Guideline 14），報告期合計 −19.1%，簡化版 −3.3%；五個月都超出模型自己的 90% 不確定度；三個月加權分段等於同季基準（[報告](reports/P10B_REPORT.md)）
 - [x] **P10 第三段：OpenDSM 1.2.7 重跑** — `eemeter` 已改名 OpenDSM；CalTRACK 小時模型逐月差 0.000 個百分點（−19.1%），新的 `HourlyModel` 是 −12.1%，簡化版 −3.3%；同一份資料三個「合理」答案；未發布的開發版逐月再差 1–2 個百分點，所以計畫要寫到套件來源與 commit（[報告](reports/P10C_REPORT.md)）
+- [x] **P12 調校節能基準** — 12 個候選、整週交錯四折，選擇規則事前登記；月份分段讓樣本外每月 CV 22.2% → 9.9%、逐月安慰劑誤差中位數 18.2% → 4.4%；2025 年差異 −3.3% → −20.3%，貼著 CalTRACK（[報告](reports/P12_REPORT.md)）
 - [x] **P11 控制層骨架** — 實測負載與氣象 × 假設的機房模型；8 組回放套用後設定點超出硬限制 0 步；完美預測只比延續當下值省 0.05%，但安全層介入從 47 步降到 0；模擬的省電百分比是假設參數的產物，不可引用（[報告](reports/P11_REPORT.md)）
 
 ### 還沒做的（依優先序）
@@ -107,12 +109,13 @@ src/fetch_data.sh                      # 取資料（走 Git LFS API，附 SHA25
 .venv/bin/python src/run_p10.py             # P10：跨年基準（需 Kaggle 競賽版 2025 資料，見報告）
 .venv/bin/python src/run_p10b.py            # P10 第二段：OpenEEmeter 對照（另需 uv pip install eemeter，約 25 秒）
 .venv-opendsm/bin/python src/run_p10c.py    # P10 第三段：OpenDSM 重跑（獨立 Python 3.13 環境，見 requirements-opendsm.txt）
+.venv-opendsm/bin/python src/run_p12.py     # P12：調校節能基準（同一個獨立環境，約 25 秒）
 .venv/bin/python src/run_p11.py             # P11：控制層回放（假設的機房模型，約 85 秒）
 
 docker compose up -d                        # 以下需要 PostgreSQL（OrbStack／Docker）
 .venv/bin/uvicorn --app-dir src service:app # P5：模型服務
 .venv/bin/python src/replay_p7.py           # P7：端到端回放（約 25 分鐘，會重建資料表）
-.venv/bin/python -m pytest tests/ -q        # 101 則（25 則需 PostgreSQL，未啟動則 skip）
+.venv/bin/python -m pytest tests/ -q        # 146 則（25 則需 PostgreSQL，未啟動則 skip）
 ```
 
 > 取資料為什麼不是 `curl raw.githubusercontent.com`：該 repo 用 Git LFS，直接抓只會得到
