@@ -15,7 +15,7 @@ P1–P7 用的是 BDG2 的**建築側**冰水表（小時級、24 步）。商�
 |---|---|
 | 來源 | Bosch Research, ELIAS UC1「AI-Based Modeling for Energy-Efficient Buildings」，Budapest 園區 B205 機房 |
 | 版本 | Zenodo 2024 全年：record 12590466（01–06 月）＋ 14591934（07–12 月），CC BY 4.0，12 個 zip md5 已對 Zenodo API 核對 |
-| 取得 | `data/raw/bosch/fetch_zenodo_2024.sh`（gitignored 資料夾內）；解壓只取 `B205WC*` 與 `B106WS01*` 共 230 點位 |
+| 取得 | `scripts/fetch_bosch.sh`（2024 Zenodo 自動下載並核 md5；2025 Kaggle 手動下載說明在腳本開頭）；解壓只取 `B205WC*` 與 `B106WS01*` 共 230 點位 |
 | 取樣 | 變動觸發、非等距；冰水迴路 Δt 中位約 2 分鐘，外氣溫約 6 分鐘 |
 | 未用 | Kaggle 競賽版（2025-01～07）。本輪只用 2024，2025 保留作「跨年份」驗證的下一步 |
 
